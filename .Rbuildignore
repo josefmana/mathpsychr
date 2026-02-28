@@ -1,2 +1,5 @@
 ^mathpsychr\.Rproj$
 ^\.Rproj\.user$
+^\.github$
+^LICENSE\.md$
+^outcomes$
