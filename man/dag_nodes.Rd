@@ -28,7 +28,7 @@ labels. Default is \code{name}.}
 
 \item{y}{Numeric. Vertical position.}
 
-\item{node_shape}{Numeric. {ggplot2} shape.}
+\item{node_shape}{Numeric. \{ggplot2\} shape.}
 
 \item{node_colour}{Character. Colour of nodes' outline.}
 
@@ -43,12 +43,12 @@ labels. Default is \code{name}.}
 \item{text_nudge_y}{Numeric. Vertical displacement.}
 }
 \value{
-A tibble of class \code{mpr_dag_nodes}.
+A tibble of class "mpr_dag_nodes".
 }
 \description{
 Specifies a tibble containing all structural plotting
 variables needed for drawing directed acyclic graphs (DAGs)
-within {mathpsychr}.
+within \{mathpsychr\}.
 }
 \seealso{
 \code{\link[=dag_equations]{dag_equations()}}, \code{\link[=mpr_dag]{mpr_dag()}}.

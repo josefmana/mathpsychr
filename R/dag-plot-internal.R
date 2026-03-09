@@ -11,6 +11,8 @@
 #'
 #' @returns A `"ggplot"` with the graph.
 #'
+#' @keywords internal
+#'
 #' @noRd
 draw_dag <- function(
     nodes,
@@ -21,7 +23,6 @@ draw_dag <- function(
 
   x <- mpr_dag(nodes, equations)
   dag_obj <- as_dagitty(x)
-  #dag_obj <- as_dagitty.mpr_dag(x)
 
   dag_nod <- nodes |>
     dplyr::mutate(xend = NA, yend = NA)
@@ -29,13 +30,13 @@ draw_dag <- function(
   # `geom_dag_edges_arc()` requires the `arc` variable to exist in data
   preformatted_dag <- dag_obj |>
     ggdag::tidy_dagitty() |>
-    dplyr::filter(!(is.na(xend) | is.na(yend)))
+    dplyr::filter(!(is.na(.data$xend) | is.na(.data$yend)))
   if (rlang::is_empty(arcs)) {
     dag <- preformatted_dag |>
       dplyr::mutate(arc = NA)
   } else {
     dag <- preformatted_dag |>
-      dplyr::left_join(arcs, by = dplyr::join_by(name == from, to))
+      dplyr::left_join(arcs, by = c("name" = "from", "to"))
   }
 
   if (rlang::is_empty(size)) {
@@ -46,19 +47,19 @@ draw_dag <- function(
   dag |>
     ggplot2::ggplot() +
     ggplot2::aes(
-      x = x,
-      y = y,
-      xend = xend,
-      yend = yend
+      x = .data$x,
+      y = .data$y,
+      xend = .data$xend,
+      yend = .data$yend
     ) +
     ggdag::geom_dag_point(
       data = dag_nod,
       ggplot2::aes(
-        x = x,
-        y = y,
-        fill = node_fill,
-        colour = node_colour,
-        shape = node_shape
+        x = .data$x,
+        y = .data$y,
+        fill = .data$node_fill,
+        colour = .data$node_colour,
+        shape = .data$node_shape
       ),
       size = size[["nodes"]]
     ) +
@@ -67,9 +68,9 @@ draw_dag <- function(
     ggdag::geom_dag_text(
       data = dag_nod,
       ggplot2::aes(
-        x = x,
-        y = y,
-        label = label
+        x = .data$x,
+        y = .data$y,
+        label = .data$label
       ),
       color = "black",
       size = size[["labels"]],
@@ -78,10 +79,10 @@ draw_dag <- function(
     ggdag::geom_dag_text(
       data = dag_nod,
       ggplot2::aes(
-        x = x + text_nudge_x,
-        y = y + text_nudge_y,
-        label = text,
-        colour = text_colour
+        x = .data$x + .data$text_nudge_x,
+        y = .data$y + .data$text_nudge_y,
+        label = .data$text,
+        colour = .data$text_colour
       ),
       size = size[["texts"]]
     ) +
@@ -89,14 +90,14 @@ draw_dag <- function(
     # Combining direct and arced arrows requires separate specification.
     # Taken from https://github.com/r-causal/ggdag/issues/5#issuecomment-462924706.
     ggdag::geom_dag_edges_link(
-      data = \(x) dplyr::filter(x, is.na(arc)),
+      data = \(x) dplyr::filter(x, is.na(.data$arc)),
       arrow = grid::arrow(
         length = grid::unit(size[["arrows"]], "pt"),
         type = "open"
       )
     ) +
     ggdag::geom_dag_edges_arc(
-      data = \(x) dplyr::filter(x, !is.na(arc)),
+      data = \(x) dplyr::filter(x, !is.na(.data$arc)),
       curvature = na.omit(dag$data$arc),
       arrow = grid::arrow(
         length = grid::unit(size[["arrows"]], "pt"),

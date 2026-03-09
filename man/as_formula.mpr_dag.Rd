@@ -15,7 +15,6 @@
 A list containing model's equations.
 }
 \description{
-Given a directed acyclic graph (DAG) of the \code{mpr_dag}
-class, extracts model formulas for each offspring node of
-the model.
+Given a directed acyclic graph (DAG) of the "mpr_dag" class,
+extracts model formulas for each offspring node of the model.
 }

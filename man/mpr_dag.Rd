@@ -12,16 +12,16 @@ mpr_dag(nodes, equations)
 \item{equations}{\code{mpr_dag_equations} object.}
 }
 \value{
-A list of class \code{mpr_dag}. This class is
-is used across {mathpsychr} as basis for operations
+A list of class "mpr_dag". This class is
+is used across \{mathpsychr\} as basis for operations
 with DAGs, including drawing them via \code{\link[=plot.mpr_dag]{plot.mpr_dag()}}
 and transforming them via \code{\link[=as_dagitty.mpr_dag]{as_dagitty.mpr_dag()}} for
-further operations within {dagitty}.
+further operations within \{dagitty\}.
 }
 \description{
 Using directed acyclic graph (DAG) nodes specification
 created with \code{dag_nodes}, and abstract equations
 specification created with \code{dag_equations} creates
 a list with DAG specification for methods within
-{mathpsychr}.
+\{mathpsychr\}.
 }

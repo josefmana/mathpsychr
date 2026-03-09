@@ -1,8 +1,7 @@
 #' Extract set of DAG formulas
 #'
-#' Given a directed acyclic graph (DAG) of the \code{mpr_dag}
-#' class, extracts model formulas for each offspring node of
-#' the model.
+#' Given a directed acyclic graph (DAG) of the "mpr_dag" class,
+#' extracts model formulas for each offspring node of the model.
 #'
 #' @param x \code{mpr_dag} object.
 #' @param ... Currently unused
@@ -25,7 +24,7 @@ as_formula.mpr_dag <- function(x, ...) {
 #'
 #' From a \code{mpr_dag} object, extracts a directed acyclic
 #' graph (DAG) in such a way that it can be then operated on
-#' by {dagitty}.
+#' by \{dagitty\}.
 #'
 #' @param x \code{mpr_dag} object.
 #' @param ... Currently unused
@@ -34,10 +33,9 @@ as_formula.mpr_dag <- function(x, ...) {
 #'
 #' @export
 as_dagitty.mpr_dag <- function(x, ...) {
-  #specs <- as_formula.mpr_dag(x)
   specs <- as_formula(x)
   specs$coords <- x$nodes |>
-    dplyr::select(name, x, y)
+    dplyr::select(.data$name, .data$x, .data$y)
   rlang::exec(
     ggdag::dagify,
     !!!specs
@@ -78,7 +76,7 @@ as_dagitty.mpr_dag <- function(x, ...) {
 #' plot(dag_obj, arcs = edges)
 #' plot(dag_obj, arcs = NULL) # by default, all edges are straight
 #'
-#' @returns {ggplot2} rendering of the DAG.
+#' @returns \{ggplot2\} rendering of the DAG.
 #'
 #' @export
 plot.mpr_dag <- function(x, arcs = NULL, size = NULL, ...) {

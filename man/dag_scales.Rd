@@ -16,9 +16,9 @@ dag_scales(nodes = 10, labels = 5.33, texts = 2, arrows = 12)
 \item{arrows}{Numeric. Size of the arrowheads.}
 }
 \value{
-A list of class \code{mpr_dag_scales}.
+A list of class "mpr_dag_scales".
 }
 \description{
 Specifies graphical elements of a directed acyclic
-graph (DAG) as plotted within {mathpsychr}.
+graph (DAG) as plotted within \{mathpsychr\}.
 }

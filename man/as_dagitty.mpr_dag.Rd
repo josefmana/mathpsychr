@@ -17,5 +17,5 @@ A \code{daggity} object created via \code{ggdag::daggity()}.
 \description{
 From a \code{mpr_dag} object, extracts a directed acyclic
 graph (DAG) in such a way that it can be then operated on
-by {dagitty}.
+by \{dagitty\}.
 }

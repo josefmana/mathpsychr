@@ -16,7 +16,7 @@
 \item{...}{Currently unused}
 }
 \value{
-{ggplot2} rendering of the DAG.
+\{ggplot2\} rendering of the DAG.
 }
 \description{
 Plots directed acyclic graph (DAG) based on specification

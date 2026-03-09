@@ -15,12 +15,12 @@ dag_edges(from, to, arc = 0)
 \code{\link[ggdag:geom_dag_edge_functions]{ggdag::geom_dag_edges_arc()}}).}
 }
 \value{
-A tibble of class \code{mpr_dag_edges}.
+A tibble of class "mpr_dag_edges".
 }
 \description{
 Specifies a tibble containing all edges curvature
 variables needed for drawing directed acyclic graphs
-(DAGs) within {mathpsychr}.
+(DAGs) within \{mathpsychr\}.
 }
 \seealso{
 \code{\link[=dag_nodes]{dag_nodes()}}, \code{\link[=mpr_dag]{mpr_dag()}}.

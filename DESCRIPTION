@@ -11,12 +11,9 @@ License: MIT + file LICENSE
 Imports: 
     dplyr,
     ggdag,
-    dagitty,
     ggplot2,
     glue,
     grid,
-    gt,
-    lifecycle,
     purrr,
     rlang,
     stringr,

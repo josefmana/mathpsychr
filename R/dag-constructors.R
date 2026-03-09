@@ -2,14 +2,14 @@
 #'
 #' Specifies a tibble containing all structural plotting
 #' variables needed for drawing directed acyclic graphs (DAGs)
-#' within {mathpsychr}.
+#' within \{mathpsychr\}.
 #'
 #' @param name Character. Variable names.
 #' @param label Character or Expression. Node
 #'   labels. Default is \code{name}.
 #' @param x Numeric. Horizontal position.
 #' @param y Numeric. Vertical position.
-#' @param node_shape Numeric. {ggplot2} shape.
+#' @param node_shape Numeric. \{ggplot2\} shape.
 #' @param node_colour Character. Colour of nodes' outline.
 #' @param node_fill Character. Nodes' fill colour.
 #' @param text Character. Text next to nodes.
@@ -17,7 +17,7 @@
 #' @param text_nudge_x Numeric. Horizontal displacement.
 #' @param text_nudge_y Numeric. Vertical displacement.
 #'
-#' @returns A tibble of class `mpr_dag_nodes`.
+#' @returns A tibble of class "mpr_dag_nodes".
 #'
 #' @seealso [dag_equations()], [mpr_dag()].
 #'
@@ -62,14 +62,14 @@ dag_nodes <- function(
 #'
 #' Specifies a tibble containing all structural equation
 #' variables needed for drawing directed acyclic graphs (DAGs)
-#' within {mathpsychr}.
+#' within \{mathpsychr\}.
 #'
 #' @param y Character. Outcome name.
 #' @param X Character. Causal predictors. If multiple predictors
 #'   of the same outcome are listed, they must be separated by
 #'   pluses (e.g., `"x1 + x2"`, not `"x1, x2"`).
 #'
-#' @returns A tibble of class `mpr_dag_equations`.
+#' @returns A tibble of class "mpr_dag_equations".
 #'
 #' @seealso [dag_nodes()], [mpr_dag()].
 #'
@@ -93,14 +93,14 @@ dag_equations <- function(y, X) {
 #'
 #' Specifies a tibble containing all edges curvature
 #' variables needed for drawing directed acyclic graphs
-#' (DAGs) within {mathpsychr}.
+#' (DAGs) within \{mathpsychr\}.
 #'
 #' @param from Character. Name of the parent.
 #' @param to Character.Name of the child.
 #' @param arc Numeric. The amount of arc (pushed into
 #'   [ggdag::geom_dag_edges_arc()]).
 #'
-#' @returns A tibble of class `mpr_dag_edges`.
+#' @returns A tibble of class "mpr_dag_edges".
 #'
 #' @seealso [dag_nodes()], [mpr_dag()].
 #'
@@ -127,16 +127,16 @@ dag_edges <- function(from, to, arc = 0) {
 #' created with \code{dag_nodes}, and abstract equations
 #' specification created with \code{dag_equations} creates
 #' a list with DAG specification for methods within
-#' {mathpsychr}.
+#' \{mathpsychr\}.
 #'
 #' @param nodes \code{mpr_dag_nodes} object.
 #' @param equations \code{mpr_dag_equations} object.
 #'
-#' @returns A list of class `mpr_dag`. This class is
-#' is used across {mathpsychr} as basis for operations
+#' @returns A list of class "mpr_dag". This class is
+#' is used across \{mathpsychr\} as basis for operations
 #' with DAGs, including drawing them via [plot.mpr_dag()]
 #' and transforming them via [as_dagitty.mpr_dag()] for
-#' further operations within {dagitty}.
+#' further operations within \{dagitty\}.
 #'
 #' @export
 mpr_dag <- function(nodes, equations) {
@@ -164,14 +164,14 @@ mpr_dag <- function(nodes, equations) {
 #' Constructor for DAG elements sizes
 #'
 #' Specifies graphical elements of a directed acyclic
-#' graph (DAG) as plotted within {mathpsychr}.
+#' graph (DAG) as plotted within \{mathpsychr\}.
 #'
 #' @param nodes Numeric. Size of the nodes.
 #' @param labels Numeric. Size of labels inside the nodes.
 #' @param texts Numeric. Size of text next to the nodes.
 #' @param arrows Numeric. Size of the arrowheads.
 #'
-#' @returns A list of class `mpr_dag_scales`.
+#' @returns A list of class "mpr_dag_scales".
 #'
 #' @export
 dag_scales <- function(

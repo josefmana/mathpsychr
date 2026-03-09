@@ -14,12 +14,12 @@ of the same outcome are listed, they must be separated by
 pluses (e.g., \code{"x1 + x2"}, not \code{"x1, x2"}).}
 }
 \value{
-A tibble of class \code{mpr_dag_equations}.
+A tibble of class "mpr_dag_equations".
 }
 \description{
 Specifies a tibble containing all structural equation
 variables needed for drawing directed acyclic graphs (DAGs)
-within {mathpsychr}.
+within \{mathpsychr\}.
 }
 \seealso{
 \code{\link[=dag_nodes]{dag_nodes()}}, \code{\link[=mpr_dag]{mpr_dag()}}.
