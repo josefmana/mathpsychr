@@ -9,9 +9,9 @@
 \arguments{
 \item{x}{\code{mpr_dag} object.}
 
-\item{arcs}{\code{mpr_dag_arcs} object or \code{NULL} (default).}
+\item{arcs}{\code{mpr_dag_edges} object or \code{NULL} (default).}
 
-\item{size}{\code{mpr_dag_scale} object or \code{NULL} (default).}
+\item{size}{\code{mpr_dag_scales} object or \code{NULL} (default).}
 
 \item{...}{Currently unused}
 }

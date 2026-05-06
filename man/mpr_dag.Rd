@@ -13,7 +13,7 @@ mpr_dag(nodes, equations)
 }
 \value{
 A list of class "mpr_dag". This class is
-is used across \{mathpsychr\} as basis for operations
+used across \{mathpsychr\} as basis for operations
 with DAGs, including drawing them via \code{\link[=plot.mpr_dag]{plot.mpr_dag()}}
 and transforming them via \code{\link[=as_dagitty.mpr_dag]{as_dagitty.mpr_dag()}} for
 further operations within \{dagitty\}.

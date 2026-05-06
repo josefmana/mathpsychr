@@ -5,8 +5,9 @@
 #' within \{mathpsychr\}.
 #'
 #' @param name Character. Variable names.
-#' @param label Character or Expression. Node
-#'   labels. Default is \code{name}.
+#' @param label Character or Expression. Character string
+#'   containing a valid R expression with node labels.
+#'   Default is \code{name}.
 #' @param x Numeric. Horizontal position.
 #' @param y Numeric. Vertical position.
 #' @param node_shape Numeric. \{ggplot2\} shape.
@@ -35,7 +36,6 @@ dag_nodes <- function(
     text_nudge_x = 0,
     text_nudge_y = 0
 ) {
-
   df <- tibble::tibble(
     name = as.character(name),
     label = label,
@@ -57,7 +57,6 @@ dag_nodes <- function(
   structure(df, class = c("mpr_dag_nodes", class(df)))
 }
 
-
 #' Constructor for DAG equations
 #'
 #' Specifies a tibble containing all structural equation
@@ -75,7 +74,6 @@ dag_nodes <- function(
 #'
 #' @export
 dag_equations <- function(y, X) {
-
   df <- tibble::tibble(
     y = as.character(y),
     X = as.character(X)
@@ -88,7 +86,6 @@ dag_equations <- function(y, X) {
   structure(df, class = c("mpr_dag_equations", class(df)))
 }
 
-
 #' Constructor for DAG edges
 #'
 #' Specifies a tibble containing all edges curvature
@@ -96,7 +93,7 @@ dag_equations <- function(y, X) {
 #' (DAGs) within \{mathpsychr\}.
 #'
 #' @param from Character. Name of the parent.
-#' @param to Character.Name of the child.
+#' @param to Character. Name of the child.
 #' @param arc Numeric. The amount of arc (pushed into
 #'   [ggdag::geom_dag_edges_arc()]).
 #'
@@ -106,7 +103,6 @@ dag_equations <- function(y, X) {
 #'
 #' @export
 dag_edges <- function(from, to, arc = 0) {
-
   df <- tibble::tibble(
     from = as.character(from),
     to = as.character(to),
@@ -120,7 +116,6 @@ dag_edges <- function(from, to, arc = 0) {
   structure(df, class = c("mpr_dag_edges", class(df)))
 }
 
-
 #' High-level DAG constructor
 #'
 #' Using directed acyclic graph (DAG) nodes specification
@@ -133,14 +128,13 @@ dag_edges <- function(from, to, arc = 0) {
 #' @param equations \code{mpr_dag_equations} object.
 #'
 #' @returns A list of class "mpr_dag". This class is
-#' is used across \{mathpsychr\} as basis for operations
+#' used across \{mathpsychr\} as basis for operations
 #' with DAGs, including drawing them via [plot.mpr_dag()]
 #' and transforming them via [as_dagitty.mpr_dag()] for
 #' further operations within \{dagitty\}.
 #'
 #' @export
 mpr_dag <- function(nodes, equations) {
-
   if (!inherits(nodes, "mpr_dag_nodes")) {
     cli::cli_abort("{.var nodes} must be created with dag_nodes().")
   }
@@ -160,7 +154,6 @@ mpr_dag <- function(nodes, equations) {
   )
 }
 
-
 #' Constructor for DAG elements sizes
 #'
 #' Specifies graphical elements of a directed acyclic
@@ -168,6 +161,9 @@ mpr_dag <- function(nodes, equations) {
 #'
 #' @param nodes Numeric. Size of the nodes.
 #' @param labels Numeric. Size of labels inside the nodes.
+#'   Defaults to 5.33 which is approximately 16/3, which
+#'   is the standard \{ggplot2\} conversion from 16 pt font
+#'   to internal size units.
 #' @param texts Numeric. Size of text next to the nodes.
 #' @param arrows Numeric. Size of the arrowheads.
 #'

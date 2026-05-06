@@ -9,7 +9,10 @@ dag_scales(nodes = 10, labels = 5.33, texts = 2, arrows = 12)
 \arguments{
 \item{nodes}{Numeric. Size of the nodes.}
 
-\item{labels}{Numeric. Size of labels inside the nodes.}
+\item{labels}{Numeric. Size of labels inside the nodes.
+Defaults to 5.33 which is approximately 16/3, which
+is the standard \{ggplot2\} conversion from 16 pt font
+to internal size units.}
 
 \item{texts}{Numeric. Size of text next to the nodes.}
 

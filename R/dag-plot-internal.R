@@ -11,8 +11,6 @@
 #'
 #' @returns A `"ggplot"` with the graph.
 #'
-#' @keywords internal
-#'
 #' @noRd
 draw_dag <- function(
     nodes,
@@ -20,7 +18,6 @@ draw_dag <- function(
     arcs = NULL,
     size = NULL
 ) {
-
   x <- mpr_dag(nodes, equations)
   dag_obj <- as_dagitty(x)
 
@@ -39,7 +36,7 @@ draw_dag <- function(
       dplyr::left_join(arcs, by = c("name" = "from", "to"))
   }
 
-  if (rlang::is_empty(size)) {
+  if (is.null(size)) {
     size <- dag_scales()
   }
 

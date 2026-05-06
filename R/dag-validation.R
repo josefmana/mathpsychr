@@ -5,10 +5,9 @@
 #'
 #' @noRd
 validate_equations_against_nodes <- function(equations, nodes) {
-
   x <- equations$X |>
     stringr::str_split("\\+") |>
-    purrr::flatten_chr() |>
+    purrr::list_c() |>
     stringr::str_trim()
 
   all_vars <- unique(c(equations$y, x))
@@ -20,5 +19,5 @@ validate_equations_against_nodes <- function(equations, nodes) {
     )
   }
 
-  invisible(TRUE)
+  invisible(NULL)
 }

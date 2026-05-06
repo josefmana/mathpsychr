@@ -19,7 +19,6 @@ as_formula.mpr_dag <- function(x, ...) {
   )
 }
 
-
 #' Extract dagitty DAG representation
 #'
 #' From a \code{mpr_dag} object, extracts a directed acyclic
@@ -42,15 +41,14 @@ as_dagitty.mpr_dag <- function(x, ...) {
   )
 }
 
-
 #' Plot specified DAG
 #'
 #' Plots directed acyclic graph (DAG) based on specification
 #' in `x`.
 #'
 #' @param x \code{mpr_dag} object.
-#' @param arcs \code{mpr_dag_arcs} object or `NULL` (default).
-#' @param size \code{mpr_dag_scale} object or `NULL` (default).
+#' @param arcs \code{mpr_dag_edges} object or `NULL` (default).
+#' @param size \code{mpr_dag_scales} object or `NULL` (default).
 #' @param ... Currently unused
 #'
 #' @examples

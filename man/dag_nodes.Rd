@@ -21,8 +21,9 @@ dag_nodes(
 \arguments{
 \item{name}{Character. Variable names.}
 
-\item{label}{Character or Expression. Node
-labels. Default is \code{name}.}
+\item{label}{Character or Expression. Character string
+containing a valid R expression with node labels.
+Default is \code{name}.}
 
 \item{x}{Numeric. Horizontal position.}
 

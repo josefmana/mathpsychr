@@ -9,7 +9,7 @@ dag_edges(from, to, arc = 0)
 \arguments{
 \item{from}{Character. Name of the parent.}
 
-\item{to}{Character.Name of the child.}
+\item{to}{Character. Name of the child.}
 
 \item{arc}{Numeric. The amount of arc (pushed into
 \code{\link[ggdag:geom_dag_edge_functions]{ggdag::geom_dag_edges_arc()}}).}
