@@ -4,3 +4,5 @@
 ^LICENSE\.md$
 ^outcomes$
 ^docs$
+^\.positai$
+^\.claude$
