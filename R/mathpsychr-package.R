@@ -7,5 +7,5 @@
 
 ## usethis namespace: start
 #' @importFrom rlang .data
-#' @importFrom stats as.formula na.omit
+#' @importFrom stats as.formula na.omit qnorm pnorm dnorm qt rt
 NULL
