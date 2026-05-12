@@ -41,6 +41,7 @@ mpr_power <- function(
   )
 }
 
+
 #' Constructor for the Gelman & Carlin design calculator
 #'
 #' Implements the retrodesign analysis of Gelman and Carlin (2014).

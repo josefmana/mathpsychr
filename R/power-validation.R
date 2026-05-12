@@ -53,6 +53,7 @@ validate_mpr_power <- function(x) {
   invisible(x)
 }
 
+
 #' Validate constraints of any `mpr_gelman_carlin_power` object
 #'
 #' Applies general `mpr_power` checks followed by checks specific
@@ -75,6 +76,7 @@ validate_gelman_carlin_power <- function(x) {
   invisible(x)
 }
 
+
 #' Test whether an object inherits from `mpr_power`
 #'
 #' @param x Any R object.
@@ -85,6 +87,7 @@ validate_gelman_carlin_power <- function(x) {
 is_mpr_power <- function(x) {
   inherits(x, "mpr_power")
 }
+
 
 #' Test whether an object inherits from `mpr_gelman_carlin_power`
 #'

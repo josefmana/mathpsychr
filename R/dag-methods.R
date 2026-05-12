@@ -19,6 +19,7 @@ as_formula.mpr_dag <- function(x, ...) {
   )
 }
 
+
 #' Extract dagitty DAG representation
 #'
 #' From a \code{mpr_dag} object, extracts a directed acyclic
@@ -40,6 +41,7 @@ as_dagitty.mpr_dag <- function(x, ...) {
     !!!specs
   )
 }
+
 
 #' Plot specified DAG
 #'

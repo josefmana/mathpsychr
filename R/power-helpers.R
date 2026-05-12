@@ -113,6 +113,7 @@ gelman_carlin_power <- function(
   )
 }
 
+
 #' Scalar worker: simulation (Student-t, df < Inf)
 #'
 #' @param A Numeric. Assumed effect size.
@@ -152,6 +153,7 @@ gelman_carlin_power <- function(
   )
 }
 
+
 #' Compact vector display
 #'
 #' @param x A numeric vector to format
@@ -172,6 +174,7 @@ gelman_carlin_power <- function(
       format(max(x), digits = digits)
     )
 }
+
 
 #' Single-point plot
 #'
@@ -280,6 +283,7 @@ gelman_carlin_power <- function(
   .assemble_panels(p1, p2, type)
 }
 
+
 #' Sweep plot
 #'
 #' Shows two panels, one with Type S, one with Type M error curves.
@@ -341,6 +345,7 @@ gelman_carlin_power <- function(
   .assemble_panels(p1, p2, type)
 }
 
+
 #' Shared minimal theme
 #'
 #' @noRd
@@ -355,6 +360,7 @@ gelman_carlin_power <- function(
       plot.margin       = ggplot2::margin(8, 14, 8, 8)
     )
 }
+
 
 #' Assemble Type S and Type M panels
 #'
@@ -385,6 +391,7 @@ gelman_carlin_power <- function(
   }
 }
 
+
 #' Coerce an `mpr_power` results table to a plain data.frame
 #'
 #' @param x An `mpr_power` object with results computed.
@@ -399,6 +406,7 @@ as.data.frame.mpr_power <- function(x, ...) {
   }
   x$results
 }
+
 
 #' Coerce an `mpr_power` results table to a tibble
 #'

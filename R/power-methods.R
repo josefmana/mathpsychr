@@ -41,6 +41,7 @@ compute.mpr_gelman_carlin_power <- function(x, ...) {
   x
 }
 
+
 #' Print an `mpr_power` object
 #'
 #' @param x An `mpr_power` object.
@@ -83,6 +84,7 @@ print.mpr_power <- function(x, digits = 3L, ...) {
   invisible(x)
 }
 
+
 #' Format an `mpr_power` object as a string
 #'
 #' @param x An `mpr_power` object.
@@ -100,6 +102,7 @@ format.mpr_power <- function(x, ...) {
     class(x)[1L], length(x$effect_size)
   )
 }
+
 
 #' Summarise an `mpr_power` results
 #'
@@ -150,6 +153,7 @@ summary.mpr_power <- function(object, digits = 3L, ...) {
   }
   invisible(object)
 }
+
 
 #' Plot a power analysis
 #'

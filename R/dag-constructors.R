@@ -154,6 +154,7 @@ mpr_dag <- function(nodes, equations) {
   )
 }
 
+
 #' Constructor for DAG elements sizes
 #'
 #' Specifies graphical elements of a directed acyclic
