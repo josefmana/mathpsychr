@@ -18,10 +18,17 @@ Imports:
     rlang,
     stringr,
     cli,
-    tibble
+    tibble,
+    tidyr,
+    tidyselect
 Suggests:
     patchwork,
-    gridExtra
+    gridExtra,
+    testthat (>= 3.0.0),
+    retrodesign,
+    pwrss,
+    withr
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.3
+Config/testthat/edition: 3
