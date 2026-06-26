@@ -9,18 +9,21 @@ Description: Infrastructure for specifying, simulating, and evaluating
     experiments.
 License: MIT + file LICENSE
 Imports: 
+    cli,
     dplyr,
+    eyelinker,
     ggdag,
     ggplot2,
     glue,
     grid,
     purrr,
+    readr,
     rlang,
     stringr,
-    cli,
     tibble,
     tidyr,
-    tidyselect
+    tidyselect,
+    tools
 Suggests:
     patchwork,
     gridExtra,
