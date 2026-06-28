@@ -1,159 +1,3 @@
-#' Compute Gelman & Carlin (2014) design analysis
-#'
-#' Encapsulates the assumptions for the design analysis of Gelman &
-#' Carlin (2014).
-#' Call [compute()] to run the analysis and [plot()] to visualise results.
-#'
-#' @param effect_size Numeric. Assumed true effect size(s).
-#'   A vector triggers a sweep analysis (one result row per value).
-#' @param se Numeric. Standard error. Recycled if scalar.
-#' @param alpha Numeric(1). Two-sided significance level.
-#'   Default `0.05`.
-#' @param df Numeric(1). Degrees of freedom. `Inf` (default)
-#'   selects the fast exact computation (from Lu et al. 2019). Any
-#'   finite value triggers Monte-Carlo simulation.
-#' @param n_sims Integer(1); Monte-Carlo draws used when
-#'   `df < Inf`. Defaults to 10,000.
-#'
-#' @returns An S3 object with class `c("mpr_gelman_carlin_power", "mpr_power")`.
-#'
-#' @references
-#'   Gelman, A., & Carlin, J. (2014). Beyond power calculations: Assessing
-#'   Type S (sign) and Type M (magnitude) errors. *Perspectives on
-#'   Psychological Science*, 9(6), 641--651.
-#'   \doi{10.1177/1745691614551642}
-#'
-#'   Lu, J., Qiu, Y., & Deng, A. (2019). A note on Type S/M errors in
-#'   hypothesis testing. *British Journal of Mathematical and Statistical
-#'   Psychology*, 72(1), 1-17. \doi{10.1111/bmsp.12132}
-#'
-#' @examples
-#' # Scalar: single design point
-#' d <- gelman_carlin_power(effect_size = 2, se = 8.1)
-#' d <- compute(d)
-#' print(d)
-#' summary(d)
-#'
-#' # Scalar with finite df (simulation)
-#' d_t <- gelman_carlin_power(effect_size = 2, se = 8.1, df = 30)
-#' d_t <- compute(d_t)
-#' print(d_t)
-#'
-#' # Sweep: replicate Gelman & Carlin's Figure 2
-#' D_range <- c(seq(0.01, 1, 0.01), seq(1.01, 10, 0.1))
-#' d_fig   <- gelman_carlin_power(effect_size = D_range, se = 1)
-#' d_fig   <- compute(d_fig)
-#' plot(d_fig)
-#'
-#' @export
-gelman_carlin_power <- function(
-    effect_size,
-    se,
-    alpha = 0.05,
-    df = Inf,
-    n_sims = 10000L
-) {
-  effect_size <- tryCatch(as.numeric(effect_size), warning = function(w) {
-    cli::cli_abort(c(
-      "Cannot coerce `effect_size` to numeric: {conditionMessage(w)}"
-    ))
-  })
-
-  se <- tryCatch(as.numeric(se), warning = function(w) {
-    cli::cli_abort(c(
-      "Cannot coerce `se` to numeric: {conditionMessage(w)}"
-    ))
-  })
-
-  alpha  <- as.numeric(alpha)
-  df     <- as.numeric(df)
-  n_sims <- as.integer(n_sims)
-
-  obj <- mpr_gelman_carlin_power(effect_size, se, alpha, df, n_sims)
-  validate_gelman_carlin_power(obj)
-}
-
-#' Scalar worker: normal approximation
-#'
-#' @param A Numeric. Assumed effect size.
-#' @param s Numeric. Assumed standard error.
-#' @param alpha Numeric(1). Significance level.
-#'
-#' @returns A list(power, type_s, type_m) for one (A, s) pair.
-#'
-#' @noRd
-.gc_exact <- function(A, s, alpha) {
-  eps <- .Machine$double.eps
-  lambda <- abs(A) / s
-
-  z <- qnorm(1 - alpha / 2)
-
-  p_hi <- pnorm( lambda - z)
-  p_lo <- pnorm(-lambda - z)
-  power <- p_hi + p_lo
-
-  type_s <-
-    if (power < eps) {
-      NA_real_
-    } else {
-      p_lo / power
-    }
-
-  type_m <-
-    if (lambda < eps || power < eps) {
-      NA_real_
-    } else {
-      (1 - 2 * type_s) + (dnorm(z - lambda) + dnorm(z + lambda)) / (power * lambda)
-    }
-
-  list(
-    power  = power,
-    type_s = type_s,
-    type_m = type_m
-  )
-}
-
-
-#' Scalar worker: simulation (Student-t, df < Inf)
-#'
-#' @param A Numeric. Assumed effect size.
-#' @param s Numeric. Assumed standard error.
-#' @param alpha Numeric(1). Significance level.
-#' @param df Numeric(1). Degrees of freedom.
-#' @param n_sims Integer(1). Number of simulation draws.
-#'
-#' @returns A list(power, type_s, type_m) for one (A, s) pair.
-#'
-#' @noRD
-.gc_simulate <- function(A, s, alpha, df, n_sims) {
-  eps <- .Machine$double.eps
-  z <- qt(1 - alpha / 2, df)
-  estimate <- A + s * rt(n_sims, df)
-  sig <- abs(estimate) > s * z
-  power <- mean(sig)
-
-  type_s <-
-    if (power < eps || sum(sig) == 0L) {
-      NA_real_
-    } else {
-      mean(sig & (sign(estimate) != sign(A))) / power
-    }
-
-  type_m <-
-    if (abs(A) < eps || sum(sig) == 0L) {
-      NA_real_
-    } else {
-      mean(abs(estimate[sig])) / abs(A)
-    }
-
-  list(
-    power  = power,
-    type_s = type_s,
-    type_m = type_m
-  )
-}
-
-
 #' Single-point plot
 #'
 #' Shows design dot on the background power curve.
@@ -172,7 +16,7 @@ gelman_carlin_power <- function(
 
   sweep <- do.call(rbind, lapply(
     lam_grid, function(l) {
-      r <- .gc_exact(l, 1, object$alpha)
+      r <- .gc_exact(l, 1, object$alpha) # `.gc_exact()` lives in "power-compute.R"
       data.frame(effect_size = l, se = 1, as.data.frame(r))
     }
   ))
@@ -370,34 +214,40 @@ gelman_carlin_power <- function(
 }
 
 
-#' Coerce an `mpr_power` results table to a plain data.frame
+#' Plot a power analysis
+#'
+#' For a scalar `effect_size`, draws both panels with the
+#' design point highlighted in the context of the full power curve.
+#' For a vector `effect_size`, draws the sweep curves
+#' (Figures 2a & 2b of Gelman & Carlin 2014).
+#'
+#' Requires \pkg{ggplot2} (and optionally \pkg{patchwork} for
+#' side-by-side panels).
 #'
 #' @param x An `mpr_power` object with results computed.
-#' @param ... Currently unused.
+#' @param type Character(1). `"both"` (default), `"type_s"`, or `"type_m"`.
+#' @param ...   Currently unused.
 #'
-#' @returns A `data.frame`, or `NULL` (with a warning) if results have not
-#'   been computed yet.
-as.data.frame.mpr_power <- function(x, ...) {
+#' @returns A ggplot object or a two-panel layout.
+#'
+#' @export
+plot.mpr_power <- function(
+    x,
+    type = c("both", "type_s", "type_m"),
+    ...
+) {
+  type <- match.arg(type)
   if (is.null(x$results)) {
-    cli::cli_alert_warning("No results available; returning NULL.")
-    return(NULL)
+    cli::cli_abort(c(
+      "No results to plot. Run `compute()` first."
+    ))
   }
-  x$results
-}
 
+  res <- x$results
 
-#' Coerce an `mpr_power` results table to a tibble
-#'
-#' Requires \pkg{tibble}).
-#'
-#' @param x An `mpr_power` object.
-#' @param ... Currently unused.
-#'
-#' @returns A tibble, or an error if \pkg{tibble} is not installed.
-#'
-#' @exportS3Method tibble::as_tibble
-as_tibble.mpr_power <- function(x, ...) {
-  if (!requireNamespace("tibble", quietly = TRUE))
-    cli::cli_abort("Package 'tibble' needed for as_tibble(). Install it first.")
-  tibble::as_tibble(as.data.frame(x))
+  if (nrow(res) == 1L) {
+    .gc_plot_single(res, x, type)
+  } else {
+    .gc_plot_sweep(res, type)
+  }
 }

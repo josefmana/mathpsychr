@@ -11,7 +11,7 @@
 validate_mpr_power <- function(x) {
   if (!is_mpr_power(x)) {
     cli::cli_abort(c(
-      "`x` must inherit from 'power_design'."
+      "`x` must inherit from 'mpr_power'."
     ))
   }
   if (any(is.na(x$effect_size))) {

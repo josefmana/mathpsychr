@@ -1,5 +1,3 @@
-# --- mpr_eyetracking data -----------------------------------------------------
-
 # General layout column names
 .required_layout_cols <- c(
   "aoi",

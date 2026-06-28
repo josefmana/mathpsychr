@@ -1,47 +1,3 @@
-#' @describeIn compute Method for `mpr_gelman_carlin_power` objects.
-#' @export
-compute.mpr_gelman_carlin_power <- function(x, ...) {
-  A      <- x$effect_size
-  s      <- if (length(x$se) == 1L) rep(x$se, length(A)) else x$se
-  alpha  <- x$alpha
-  df     <- x$df
-  n_sims <- x$n_sims
-
-  if (is.infinite(df)) {
-    cli::cli_alert_info(
-      "Using exact (closed-form normal approximation) computation for {length(A)} effect size{?s}."
-    )
-    rows <- purrr::map2_df(
-      A, s,
-      .gc_exact,
-      alpha = alpha
-    )
-  } else {
-    cli::cli_alert_info(
-      "Using simulation ({n_sims} draws, df = {df}) for {length(A)} effect size{?s}."
-    )
-    set.seed(NULL)
-    rows <- purrr::map2_df(
-      A, s,
-      .gc_simulate,
-      alpha = alpha,
-      df = df,
-      n_sims = n_sims
-    )
-  }
-
-  results <- dplyr::mutate(
-    rows,
-    effect_size = A,
-    se = s,
-    .before = 1
-  )
-
-  x$results <- as.data.frame(results)
-  x
-}
-
-
 #' Print an `mpr_power` object
 #'
 #' @param x An `mpr_power` object.
@@ -155,40 +111,36 @@ summary.mpr_power <- function(object, digits = 3L, ...) {
 }
 
 
-#' Plot a power analysis
-#'
-#' For a scalar `effect_size`, draws both panels with the
-#' design point highlighted in the context of the full power curve.
-#' For a vector `effect_size`, draws the sweep curves
-#' (Figures 2a & 2b of Gelman & Carlin 2014).
-#'
-#' Requires \pkg{ggplot2} (and optionally \pkg{patchwork} for
-#' side-by-side panels).
+#' Coerce an `mpr_power` results table to a plain data.frame
 #'
 #' @param x An `mpr_power` object with results computed.
-#' @param type Character(1). `"both"` (default), `"type_s"`, or `"type_m"`.
-#' @param ...   Currently unused.
+#' @param ... Currently unused.
 #'
-#' @return A ggplot object or a two-panel layout.
+#' @returns A `data.frame`, or `NULL` (with a warning) if results have not
+#'   been computed yet.
 #'
 #' @export
-plot.mpr_power <- function(
-    x,
-    type = c("both", "type_s", "type_m"),
-    ...
-) {
-  type <- match.arg(type)
+as.data.frame.mpr_power <- function(x, ...) {
   if (is.null(x$results)) {
-    cli::cli_abort(c(
-      "No results to plot. Run `compute()` first."
-    ))
+    cli::cli_alert_warning("No results available; returning NULL.")
+    return(NULL)
   }
+  x$results
+}
 
-  res <- x$results
 
-  if (nrow(res) == 1L) {
-    .gc_plot_single(res, x, type)
-  } else {
-    .gc_plot_sweep(res, type)
-  }
+#' Coerce an `mpr_power` results table to a tibble
+#'
+#' Requires \pkg{tibble}).
+#'
+#' @param x An `mpr_power` object.
+#' @param ... Currently unused.
+#'
+#' @returns A tibble, or an error if \pkg{tibble} is not installed.
+#'
+#' @exportS3Method tibble::as_tibble
+as_tibble.mpr_power <- function(x, ...) {
+  if (!requireNamespace("tibble", quietly = TRUE))
+    cli::cli_abort("Package 'tibble' needed for as_tibble(). Install it first.")
+  tibble::as_tibble(as.data.frame(x))
 }
