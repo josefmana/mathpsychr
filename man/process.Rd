@@ -4,7 +4,7 @@
 \alias{process}
 \alias{process.default}
 \alias{process.mpr_eyelink_eyetracking}
-\title{Process eye-tracking data and compute AOI statistics}
+\title{Process eye-tracking data}
 \usage{
 process(x, ...)
 
@@ -27,16 +27,97 @@ process(x, ...)
 \arguments{
 \item{x}{An \code{mpr_eyetracking} object.}
 
-\item{...}{Additional arguments passed to downstream methods.}
+\item{...}{Currently unused.}
+
+\item{type}{Character(1). Analysis type: \code{"indexes"} or \code{"cascade"}.
+
+\code{"indexes"} computes trial-level grouped eye-tracking statistics and
+returns one row per identifier × \code{grp_vars} × AOI combination. The
+\code{stats}, \code{window}, \code{query_aoi}, and \code{reference_aois} arguments apply.
+
+\code{"cascade"} computes gaze-cascade dwell proportions relative to the
+response time, classified as fixations on the chosen or unchosen AOI.
+Time runs backwards in \code{n_bins} equal-width bins spanning
+\verb{[-window, 0]} seconds, and returns one row per identifier × \code{grp_vars}
+× bin. Requires \code{x$responses} to be non-\code{NULL}. The \code{n_bins}, \code{window},
+\code{response_time_col}, and \code{chosen_aoi_col} arguments apply.}
+
+\item{grp_vars}{Character vector of additional grouping variable names
+present in \code{x$fixations} (and in \code{x$responses} when
+\code{type = "cascade"}), or \code{NULL} (default) for no extra grouping beyond
+the identifier column.}
+
+\item{stats}{Character vector of statistics to compute. Only used when
+\code{type = "indexes"}. Defaults to \code{c("fix_count", "dwell_total")}. Valid
+values:
+\describe{
+\item{\code{"fix_count"}}{Total number of fixations on the AOI.}
+\item{\code{"dwell_total"}}{Total dwell time on the AOI.}
+\item{\code{"dwell_mean"}}{Mean fixation duration on the AOI.}
+\item{\code{"dwell_median"}}{Median fixation duration on the AOI.}
+\item{\code{"dwell_sd"}}{SD of fixation duration on the AOI.}
+\item{\code{"switches_total"}}{Number of AOI switches across the trial.}
+\item{\code{"revisits_count"}}{Return visits to the AOI after first
+departing.}
+\item{\code{"transitions_ref_to_ref"}}{Gaze shifts between the two
+reference AOIs. Requires \code{query_aoi} and \code{reference_aois}.}
+\item{\code{"transitions_query_refs"}}{Gaze shifts between the query and
+any reference AOI. Requires \code{query_aoi} and \code{reference_aois}.}
+\item{\code{"transitions_query_ref1"}}{Gaze shifts between the query and
+\code{reference_aois[1]}. Requires \code{query_aoi} and \code{reference_aois}.}
+\item{\code{"transitions_query_ref2"}}{Gaze shifts between the query and
+\code{reference_aois[2]}. Requires \code{query_aoi} and \code{reference_aois}.}
+\item{\code{"first_fix_start"}}{Time of the first fixation on the AOI.}
+\item{\code{"first_reference_fix_start"}}{Time of the first fixation on
+any reference AOI. Requires \code{reference_aois}.}
+\item{\code{"last_fix_end"}}{Time when the last fixation on the AOI
+ended.}
+\item{\code{"watch_time"}}{Cumulative time until the end of the last
+fixation in the observation window.}
+}}
+
+\item{window}{Numeric(1). When \code{type = "indexes"}: upper bound on
+fixation end time (\code{etime}); fixations with \code{etime >= window} are
+excluded, and a \verb{_<window>} suffix is appended to statistic column
+names. \code{Inf} (default) keeps all fixations. When \code{type = "cascade"}:
+the span of the time window in \strong{seconds}, running from \code{-window} to
+\code{0} relative to the response. Must be finite and positive for cascade.
+If a value greater than 30 is supplied for \code{type = "cascade"},
+milliseconds are assumed and the value is automatically converted.}
+
+\item{query_aoi}{Character(1). Label of the query AOI in
+\code{x$layout$aoi}. Required for all \verb{transitions_*} statistics when
+\code{type = "indexes"}. Defaults to \code{NULL}.}
+
+\item{reference_aois}{Character(2). Labels of the two reference AOIs in
+\code{x$layout$aoi}. Required for \verb{transitions_*} statistics and
+\code{"first_reference_fix_start"} when \code{type = "indexes"}. For
+\code{type = "cascade"}, reference AOIs are derived automatically from the
+unique non-\code{NA} values of \code{chosen_aoi_col} in \code{x$responses}. Defaults
+to \code{NULL}.}
+
+\item{n_bins}{Integer(1). Number of equal-width time bins spanning
+\verb{[-window, 0]}. Only used when \code{type = "cascade"}. Defaults to \code{100L}.}
+
+\item{response_time_col}{Character(1). Name of the response time column
+in \code{x$responses}. Only used when \code{type = "cascade"}. Defaults to
+\code{"response_time"}.}
+
+\item{chosen_aoi_col}{Character(1). Name of the chosen-AOI column in
+\code{x$responses}, whose unique non-\code{NA} values define the reference AOIs
+for the cascade classification. Only used when \code{type = "cascade"}.
+Defaults to \code{"chosen_aoi"}.}
 }
 \value{
-The same object with \verb{$results} populated as a \code{data.frame}
-with columns for the grouping variables, \code{aoi}, and the requested
-statistics.
+The same object with \verb{$derivatives} populated as a \code{data.frame}.
+The class vector is prepended with a result subclass:
+\code{"mpr_et_indexes"} when \code{type = "indexes"}, or
+\code{"mpr_gaze_cascade"} when \code{type = "cascade"}.
 }
 \description{
-Dispatches to a method for the concrete subclass and populates the
-\verb{$results} field. Existing results are silently overwritten.
+Dispatches to a method for the concrete subclass, populates the
+\verb{$derivatives} field with analysis results, and prepends a result subclass
+to the class vector. Existing derivatives are silently overwritten.
 }
 \section{Methods (by class)}{
 \itemize{
@@ -44,10 +125,5 @@ Dispatches to a method for the concrete subclass and populates the
 
 }}
 \seealso{
-Other eyetracking: 
-\code{\link{as.data.frame.mpr_eyetracking}()},
-\code{\link{format.mpr_eyetracking}()},
-\code{\link{print.mpr_eyetracking}()},
-\code{\link{summarise_aoi}()}
+\code{\link[=eyelink_eyetracking]{eyelink_eyetracking()}}, \code{\link[=plot.mpr_gaze_cascade]{plot.mpr_gaze_cascade()}}
 }
-\concept{eyetracking}

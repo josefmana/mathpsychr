@@ -65,8 +65,8 @@
     data |>
     dplyr::cross_join(layout) |>
     dplyr::filter(
-      axp >= xleft, axp <= xright,
-      ayp >= ybottom, ayp <= ytop
+      .data$axp >= .data$xleft, .data$axp <= .data$xright,
+      .data$ayp >= .data$ybottom, .data$ayp <= .data$ytop
     ) |>
     dplyr::select(
       tidyselect::all_of(c(original_cols, "aoi"))
@@ -94,7 +94,7 @@
     )
 
     cli::cli_abort(c(
-      "`layout` contains overlapping AOIs.",
+            "`layout` contains overlapping AOIs.",
       "x" = "{length(offending)} fixation row{?s} matched multiple AOIs.",
       "i" = "Affected fixation row{?s}: {.val {offending}}."
     ))
@@ -358,7 +358,7 @@
   # --- Preconditions ----------------------------------------------------------
   if (is.null(x$responses)) {
     cli::cli_abort(c(
-      "Gaze-cascade analysis requires participant responses.",
+            "Gaze-cascade analysis requires participant responses.",
       "x" = "`x$responses` is `NULL`.",
       "i" = "Provide responses with `{response_time_col}` and `{chosen_aoi_col}` columns."
     ))
@@ -366,9 +366,28 @@
 
   if (!is.finite(window) || window <= 0) {
     cli::cli_abort(c(
-      "`window` must be a finite, positive number for gaze-cascade analysis.",
+            "`window` must be a finite, positive number for gaze-cascade analysis.",
       "x" = "Received {.val {window}}."
     ))
+  }
+
+  # --- Time unit detection (ms -> s) ------------------------------------------
+  if (window > 30) {
+    cli::cli_inform(c(
+      "!" = "`window = {window}` looks like milliseconds (threshold: > 30).",
+      "i" = "Assuming ms: converting `stime`, `etime`, `{response_time_col}`, and `window` to seconds.",
+      "i" = "Pass `window` in seconds (e.g., {.val {window / 1000}}) to silence this message."
+    ))
+    x$fixations <- dplyr::mutate(
+      x$fixations,
+      stime = .data$stime / 1e3,
+      etime = .data$etime / 1e3
+    )
+    x$responses <- dplyr::mutate(
+      x$responses,
+      dplyr::across(tidyselect::all_of(response_time_col), \(v) v / 1e3)
+    )
+    window <- window / 1e3
   }
 
   missing_resp_cols <- setdiff(
@@ -464,7 +483,8 @@
     )
 
   # --- Cluster-level average cascade ------------------------------------------
-  trial_level |>
+  output <-
+    trial_level |>
     dplyr::group_by(
       dplyr::across(tidyselect::all_of(c(grp_full, "bin")))
     ) |>
@@ -479,6 +499,12 @@
       n_trials = sum(!is.na(.data$prop_chosen)),
       .groups = "drop"
     )
+
+  # Stamp window/n_bins so that plot.mpr_gaze_cascade can reconstruct the time
+  # axis without requiring the user to re-supply these arguments.
+  attr(output, "window") <- window
+  attr(output, "n_bins") <- n_bins
+  output
 }
 
 
