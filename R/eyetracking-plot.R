@@ -3,6 +3,11 @@
   L + (U - L) / (1 + exp(-k * (t - t0)))
 }
 
+# Internal: piecewise linear
+.piecewise_linear <- function(t, L, t0, slope) {
+  L + slope * pmax(0, t - t0)
+}
+
 
 #' Fit a sigmoid curve to a gaze-cascade grand-average series
 #'
@@ -63,6 +68,100 @@
 }
 
 
+#' Fit a piecewise linear curve to a gaze-cascade grand-average series
+#'
+#' Fits a three-parameter hinge model `L + slope * max(0, t - t0)` to the
+#' grand-average gaze-cascade curve via nonlinear least squares. The two
+#' interpretable parameters are the breakpoint (`t0`, when gaze begins
+#' shifting from baseline toward the chosen image) and the slope (rate of
+#' preference accumulation after the breakpoint).
+#'
+#' @param time Numeric vector. Time values (x-axis), typically bin midpoints
+#'   in seconds relative to the response.
+#' @param y Numeric vector. Proportions (y-axis), same length as `time`. `NA`
+#'   values are silently dropped before fitting.
+#' @param label Character(1). Label appended to the warning message when
+#'   fitting fails. Defaults to `""`.
+#'
+#' @returns A named list:
+#'   \describe{
+#'     \item{`params`}{Named numeric(3): `L` (baseline), `t0` (breakpoint,
+#'       seconds relative to response), `slope` (rate of rise per second).}
+#'     \item{`fitted`}{Numeric vector of fitted values at each `time` point.}
+#'     \item{`r2`}{Numeric(1). Correlation-based coefficient of determination.}
+#'   }
+#'   Returns `NULL` invisibly when fitting fails, after issuing a warning.
+#'
+#' @noRd
+.fit_cascade_piecewise <- function(time, y, label = "") {
+  mask <- !is.na(y)
+  fit <- tryCatch(
+    stats::nls(
+      y[mask] ~ .piecewise_linear(time[mask], L, t0, slope),
+      start     = list(L = 0.5, t0 = -1.0, slope = 0.3),
+      lower     = c(   L = 0.3, t0 = min(time, na.rm = TRUE), slope = 0),
+      upper     = c(   L = 0.7, t0 = 0,                       slope = Inf),
+      algorithm = "port",
+      control   = stats::nls.control(maxiter = 500L, warnOnly = TRUE)
+    ),
+    error = \(e) {
+      label_str <- if (nchar(label) > 0L) sprintf(" (%s)", label) else ""
+      cli::cli_warn("Piecewise linear fit{label_str} failed: {conditionMessage(e)}")
+      NULL
+    }
+  )
+  if (is.null(fit)) return(invisible(NULL))
+
+  params <- stats::coef(fit)
+  fitted <- .piecewise_linear(
+    time,
+    L     = params["L"],
+    t0    = params["t0"],
+    slope = params["slope"]
+  )
+  r2 <- stats::cor(y[mask], fitted[mask])^2
+
+  list(params = params, fitted = fitted, r2 = r2)
+}
+
+
+#' Apply a cascade curve fitter with optional per-facet grouping
+#'
+#' Thin dispatcher used by [plot.mpr_gaze_cascade()]. When `facet_by` is
+#' `NULL`, the fitter is called once on the whole grand-average series.
+#' When `facet_by` names one or more columns, the fitter is called once per
+#' group via [dplyr::group_modify()].
+#'
+#' @param df_grand Grand-average data frame produced by [.summarise_cascade()].
+#'   Must contain at least `time` and `mean_prop`.
+#' @param facet_by Character vector of facet column names, or `NULL`.
+#' @param fitter Function with signature `(time, y, label = "")`, either
+#'   [.fit_cascade_sigmoid()] or [.fit_cascade_piecewise()].
+#'
+#' @returns A data.frame with columns `time`, `y_fit`, `r2` (plus any
+#'   `facet_by` key columns), or `NULL` when every group fit fails.
+#'
+#' @noRd
+.compute_cascade_fit <- function(df_grand, facet_by, fitter) {
+  if (is.null(facet_by)) {
+    fit <- fitter(df_grand$time, df_grand$mean_prop)
+    if (is.null(fit)) return(NULL)
+    data.frame(time = df_grand$time, y_fit = fit$fitted, r2 = fit$r2)
+  } else {
+    result <-
+      df_grand |>
+      dplyr::group_by(dplyr::across(tidyselect::all_of(facet_by))) |>
+      dplyr::group_modify(\(d, k) {
+        fit <- fitter(d$time, d$mean_prop)
+        if (is.null(fit)) return(data.frame())
+        data.frame(time = d$time, y_fit = fit$fitted, r2 = fit$r2[1L])
+      }) |>
+      dplyr::ungroup()
+    if (nrow(result) == 0L) NULL else result
+  }
+}
+
+
 #' Aggregate cluster-level cascade proportions to a grand average
 #'
 #' Takes the cluster-level `$derivatives` output of
@@ -75,15 +174,19 @@
 #'   at least `bin` and `average_prop_chosen`.
 #' @param n_bins Integer(1). Number of equal-width time bins.
 #' @param window Numeric(1). Width of the cascade time window in seconds.
+#' @param by Character vector of additional grouping columns to aggregate
+#'   within (typically the `facet_by` variable), or `NULL` (default) for a
+#'   single grand average across all clusters.
 #'
 #' @returns A data.frame with columns `bin`, `time`, `mean_prop`, `se`,
 #'   `ci_low`, `ci_high`. `time` contains bin midpoints in seconds relative
 #'   to the response.
 #'
 #' @noRd
-.summarise_cascade <- function(data, n_bins, window) {
+.summarise_cascade <- function(data, n_bins, window, by = NULL) {
+  grp <- c(by, "bin")
   data |>
-    dplyr::group_by(.data$bin) |>
+    dplyr::group_by(dplyr::across(tidyselect::all_of(grp))) |>
     dplyr::summarise(
       mean_prop = mean(.data$average_prop_chosen, na.rm = TRUE),
       se = stats::sd(.data$average_prop_chosen, na.rm = TRUE) /
@@ -119,18 +222,30 @@
 
 #' Plot a gaze-cascade analysis
 #'
-#' Produces a grand-average gaze-cascade plot from an `mpr_gaze_cascade`
-#' object. Individual cluster curves (e.g., per-participant) are optionally
-#' drawn in grey behind the grand-average line, a 95% CI ribbon, and an
-#' optional four-parameter sigmoid fit.
+#' Produces a gaze-cascade plot from an `mpr_gaze_cascade` object. Individual
+#' cluster curves (e.g., per-participant) are optionally drawn in grey behind
+#' the grand-average line and its 95% CI ribbon. One or both of a four-parameter
+#' sigmoid and a piecewise linear model can be overlaid. The plot can be faceted
+#' by any grouping variable present in `x$derivatives` (e.g., a confidence level
+#' column), with fits computed independently per panel.
 #'
 #' @param x An `mpr_gaze_cascade`, i.e., `mpr_eyelink_eyetracking` object on
 #'   which `process(..., type = "cascade")` has been called.
 #' @param show_clusters Logical(1). Whether to draw individual cluster-level
 #'   curves in the background. Defaults to `TRUE`.
-#' @param show_sigmoid Logical(1). Whether to fit and overlay a four-parameter
-#'   sigmoid. A warning is issued if fitting fails and the sigmoid layer is
-#'   silently dropped. Defaults to `TRUE`.
+#' @param show_grand_avg Logical(1). Whether to draw the grand-average line
+#'   and its 95% CI ribbon. Defaults to `TRUE`. Set to `FALSE` to show fit
+#'   curves only.
+#' @param fit_type Character(1). Which curve model(s) to overlay: `"sigmoid"`
+#'   (default), `"piecewise"`, `"both"`, or `"none"`. The sigmoid is a
+#'   four-parameter logistic; the piecewise linear is a three-parameter hinge
+#'   (baseline, breakpoint, slope). Both are fit via nonlinear least squares
+#'   ([stats::nls()]). A warning is issued when fitting fails and the
+#'   corresponding layer is silently dropped.
+#' @param facet_by Character vector. Names of one or more columns in
+#'   `x$derivatives` to facet by using [ggplot2::facet_wrap()]. Fits and
+#'   grand averages are computed independently per panel. Defaults to `NULL`
+#'   (no faceting).
 #' @param ... Currently unused.
 #'
 #' @returns A [ggplot2::ggplot()] object.
@@ -140,8 +255,10 @@
 #' @export
 plot.mpr_gaze_cascade <- function(
     x,
-    show_clusters = TRUE,
-    show_sigmoid  = TRUE,
+    show_clusters  = TRUE,
+    show_grand_avg = TRUE,
+    fit_type       = c("sigmoid", "piecewise", "both", "none"),
+    facet_by       = NULL,
     ...
 ) {
   # --- Preconditions ----------------------------------------------------------
@@ -162,6 +279,20 @@ plot.mpr_gaze_cascade <- function(
     ))
   }
 
+  fit_type <- match.arg(fit_type)
+  faceted  <- !is.null(facet_by)
+
+  if (faceted) {
+    missing_facet <- setdiff(facet_by, colnames(x$derivatives))
+    if (length(missing_facet) > 0L) {
+      cli::cli_abort(c(
+              "`facet_by` column{?s} not found in `x$derivatives`.",
+        "x" = "Missing: {.val {missing_facet}}.",
+        "i" = "Available columns: {.val {colnames(x$derivatives)}}."
+      ))
+    }
+  }
+
   # --- Cluster data with time axis --------------------------------------------
   cluster_cols <- setdiff(
     colnames(x$derivatives),
@@ -177,45 +308,70 @@ plot.mpr_gaze_cascade <- function(
       )
     )
 
-  # --- Data to be plotted -----------------------------------------------------
-  df_grand <- .summarise_cascade(x$derivatives, n_bins, window)
+  # --- Grand avergage & curve fits --------------------------------------------
+  df_grand <- .summarise_cascade(x$derivatives, n_bins, window, by = facet_by)
 
-  sigmoid_fit <- if (show_sigmoid) {
-    .fit_cascade_sigmoid(df_grand$time, df_grand$mean_prop)
+  df_sigmoid <- if (fit_type %in% c("sigmoid", "both")) {
+    .compute_cascade_fit(df_grand, facet_by, .fit_cascade_sigmoid)
   } else {
     NULL
   }
 
-  r2_label <- if (!is.null(sigmoid_fit)) {
-    sprintf("Sigmoid fit (R\u00b2 = %.2f)", sigmoid_fit$r2)
+  df_piecewise <- if (fit_type %in% c("piecewise", "both")) {
+    .compute_cascade_fit(df_grand, facet_by, .fit_cascade_piecewise)
+  } else {
+    NULL
+  }
+
+  # --- Fit labels (R2 omitted in faceted mode) --------------------------------
+  sigmoid_label <- if (!is.null(df_sigmoid)) {
+    if (faceted) "Sigmoid Fit" else
+      sprintf("Sigmoid Fit (R\u00b2 = %.2f)", df_sigmoid$.r2[1L])
+  } else {
+    NULL
+  }
+
+  piecewise_label <- if (!is.null(df_piecewise)) {
+    if (faceted) "Piecewise Fit" else
+      sprintf("Piecewise Fit (R\u00b2 = %.2f)", df_piecewise$.r2[1L])
   } else {
     NULL
   }
 
   # --- Legend palette ---------------------------------------------------------
   legend_items <- c(
-    "95% CI",
-    "Grand Average",
-    r2_label, # NULL entries are silently dropped by c()
+    if (show_grand_avg) c("95% CI", "Grand Average"),
+    sigmoid_label, # NULL entries dropped silently by c()
+    piecewise_label,
     "Chance (0.5)"
   )
-  n_items <- length(legend_items)
 
-  colour_vals <- stats::setNames(
-    c("#2C7FB8", "#2C7FB8", if (!is.null(r2_label)) "#C0392B", "black"),
-    legend_items
+  colour_vals <- c(
+    if (show_grand_avg) c("95% CI" = "#2C7FB8", "Grand Average" = "#2C7FB8"),
+    if (!is.null(sigmoid_label))   stats::setNames("#C0392B", sigmoid_label),
+    if (!is.null(piecewise_label)) stats::setNames("#27AE60", piecewise_label),
+    c("Chance (0.5)" = "black")
   )
 
-  linetype_overrides <- c(
-    "blank", "solid",
-    if (!is.null(r2_label)) "solid",
-    "dashed"
-  )
-  linewidth_overrides <- c(
-    0, 1.2,
-    if (!is.null(r2_label)) 1.2,
-    0.8
-  )
+  n_items    <- length(legend_items)
+  .shape     <- rep(NA_integer_,   n_items)
+  .fill      <- rep(NA_character_, n_items)
+  .size      <- rep(NA_real_,      n_items)
+  .linetype  <- rep("solid",       n_items)
+  .linewidth <- rep(1.2,           n_items)
+
+  ci_pos <- match("95% CI", legend_items)
+  if (!is.na(ci_pos)) {
+    .shape[ci_pos]     <- 15L
+    .fill[ci_pos]      <- scales::alpha("#2C7FB8", 0.35)
+    .size[ci_pos]      <- 6
+    .linetype[ci_pos]  <- "blank"
+    .linewidth[ci_pos] <- 0
+  }
+
+  chance_pos             <- match("Chance (0.5)", legend_items)
+  .linetype[chance_pos]  <- "dashed"
+  .linewidth[chance_pos] <- 0.8
 
   # --- Build plot -------------------------------------------------------------
   p <- ggplot2::ggplot()
@@ -234,44 +390,62 @@ plot.mpr_gaze_cascade <- function(
     )
   }
 
-  p <- p +
-    ggplot2::geom_hline(
-      ggplot2::aes(yintercept = 0.5, colour = "Chance (0.5)"),
-      linetype = "dashed"
-    ) +
-    ggplot2::geom_ribbon(
-      data = df_grand,
+  p <- p + ggplot2::geom_hline(
+    ggplot2::aes(yintercept = 0.5, colour = "Chance (0.5)"),
+    linetype = "dashed"
+  )
+
+  if (show_grand_avg) {
+    p <- p +
+      ggplot2::geom_ribbon(
+        data = df_grand,
+        ggplot2::aes(
+          x      = .data$time,
+          ymin   = .data$ci_low,
+          ymax   = .data$ci_high,
+          colour = "95% CI"
+        ),
+        alpha     = 0.2,
+        linewidth = 0,
+        fill      = "#2C7FB8"
+      ) +
+      ggplot2::geom_line(
+        data = df_grand,
+        ggplot2::aes(
+          x      = .data$time,
+          y      = .data$mean_prop,
+          colour = "Grand Average"
+        ),
+        linewidth = 1.2
+      )
+  }
+
+  if (!is.null(df_sigmoid)) {
+    p <- p + ggplot2::geom_line(
+      data      = df_sigmoid,
       ggplot2::aes(
         x      = .data$time,
-        ymin   = .data$ci_low,
-        ymax   = .data$ci_high,
-        colour = "95% CI"
-      ),
-      alpha     = 0.2,
-      linewidth = 0,
-      fill      = "#2C7FB8"
-    ) +
-    ggplot2::geom_line(
-      data = df_grand,
-      ggplot2::aes(
-        x      = .data$time,
-        y      = .data$mean_prop,
-        colour = "Grand Average"
+        y      = .data$.y_fit,
+        colour = sigmoid_label
       ),
       linewidth = 1.2
     )
+  }
 
-  if (!is.null(sigmoid_fit)) {
-    df_sigmoid <- data.frame(time = df_grand$time, y = sigmoid_fit$fitted)
+  if (!is.null(df_piecewise)) {
     p <- p + ggplot2::geom_line(
-      data = df_sigmoid,
-      ggplot2::aes(x = .data$time, y = .data$y, colour = r2_label),
+      data      = df_piecewise,
+      ggplot2::aes(
+        x      = .data$time,
+        y      = .data$.y_fit,
+        colour = piecewise_label
+      ),
       linewidth = 1.2
     )
   }
 
   # --- Scales, legend and theme -----------------------------------------------
-  p +
+  p <- p +
     ggplot2::scale_colour_manual(
       name   = NULL,
       values = colour_vals,
@@ -280,11 +454,11 @@ plot.mpr_gaze_cascade <- function(
     ggplot2::guides(
       colour = ggplot2::guide_legend(
         override.aes = list(
-          shape     = c(15L,  rep(NA_integer_, n_items - 1L)),
-          fill      = c(scales::alpha("#2C7FB8", 0.35), rep(NA, n_items - 1L)),
-          size      = c(6,    rep(NA_real_,    n_items - 1L)),
-          linetype  = linetype_overrides,
-          linewidth = linewidth_overrides
+          shape     = .shape,
+          fill      = .fill,
+          size      = .size,
+          linetype  = .linetype,
+          linewidth = .linewidth
         )
       )
     ) +
@@ -294,4 +468,11 @@ plot.mpr_gaze_cascade <- function(
       y = "Likelihood of fixating chosen image"
     ) +
     .et_cascade_theme()
+
+  # --- Optional faceting ------------------------------------------------------
+  if (faceted) {
+    p <- p + ggplot2::facet_wrap(ggplot2::vars(!!!rlang::syms(facet_by)))
+  }
+
+  p
 }

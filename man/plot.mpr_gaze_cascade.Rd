@@ -4,7 +4,14 @@
 \alias{plot.mpr_gaze_cascade}
 \title{Plot a gaze-cascade analysis}
 \usage{
-\method{plot}{mpr_gaze_cascade}(x, show_clusters = TRUE, show_sigmoid = TRUE, ...)
+\method{plot}{mpr_gaze_cascade}(
+  x,
+  show_clusters = TRUE,
+  show_grand_avg = TRUE,
+  fit_type = c("sigmoid", "piecewise", "both", "none"),
+  facet_by = NULL,
+  ...
+)
 }
 \arguments{
 \item{x}{An \code{mpr_gaze_cascade}, i.e., \code{mpr_eyelink_eyetracking} object on
@@ -13,9 +20,21 @@ which \code{process(..., type = "cascade")} has been called.}
 \item{show_clusters}{Logical(1). Whether to draw individual cluster-level
 curves in the background. Defaults to \code{TRUE}.}
 
-\item{show_sigmoid}{Logical(1). Whether to fit and overlay a four-parameter
-sigmoid. A warning is issued if fitting fails and the sigmoid layer is
-silently dropped. Defaults to \code{TRUE}.}
+\item{show_grand_avg}{Logical(1). Whether to draw the grand-average line
+and its 95\% CI ribbon. Defaults to \code{TRUE}. Set to \code{FALSE} to show fit
+curves only.}
+
+\item{fit_type}{Character(1). Which curve model(s) to overlay: \code{"sigmoid"}
+(default), \code{"piecewise"}, \code{"both"}, or \code{"none"}. The sigmoid is a
+four-parameter logistic; the piecewise linear is a three-parameter hinge
+(baseline, breakpoint, slope). Both are fit via nonlinear least squares
+(\code{\link[stats:nls]{stats::nls()}}). A warning is issued when fitting fails and the
+corresponding layer is silently dropped.}
+
+\item{facet_by}{Character vector. Names of one or more columns in
+\code{x$derivatives} to facet by using \code{\link[ggplot2:facet_wrap]{ggplot2::facet_wrap()}}. Fits and
+grand averages are computed independently per panel. Defaults to \code{NULL}
+(no faceting).}
 
 \item{...}{Currently unused.}
 }
@@ -23,10 +42,12 @@ silently dropped. Defaults to \code{TRUE}.}
 A \code{\link[ggplot2:ggplot]{ggplot2::ggplot()}} object.
 }
 \description{
-Produces a grand-average gaze-cascade plot from an \code{mpr_gaze_cascade}
-object. Individual cluster curves (e.g., per-participant) are optionally
-drawn in grey behind the grand-average line, a 95\% CI ribbon, and an
-optional four-parameter sigmoid fit.
+Produces a gaze-cascade plot from an \code{mpr_gaze_cascade} object. Individual
+cluster curves (e.g., per-participant) are optionally drawn in grey behind
+the grand-average line and its 95\% CI ribbon. One or both of a four-parameter
+sigmoid and a piecewise linear model can be overlaid. The plot can be faceted
+by any grouping variable present in \code{x$derivatives} (e.g., a confidence level
+column), with fits computed independently per panel.
 }
 \seealso{
 Other eyetracking: 
