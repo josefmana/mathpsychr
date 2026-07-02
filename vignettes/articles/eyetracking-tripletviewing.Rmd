@@ -1,0 +1,226 @@
+---
+title: "Eyetracking – Triplet Decision Task Case Study"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Eyetracking – Triplet Decision Task Case Study}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+In this vignette, we use data from a triplet decision task to demonstrate how to import, process, and visualise eye-tracking measurements via the `{mathpsychr}` R package.
+
+```{r setup}
+#library(osfr)           # see below on how to set-up
+#library(tripletviewing) # see below on how to set-up
+library(tidyverse)
+library(mathpsychr)
+```
+
+# Prerequisites
+
+## {osfr}
+
+Currently, the data are hosted on OSF. To access them from R, you will need a Personal Access Token (PAT) for the `{osfr}` package.
+
+1. Ensure you are listed as a contributor on the private [FACES Eye-Tracking (Triplet Viewing)](https://osf.io/T3bxj/) project.
+2. Create a PAT in your OSF account [settings](https://osf.io/settings/tokens).
+3. Open your `.Renviron` file via `{usethis}`.
+
+```r
+usethis::edit_r_environ()
+```
+
+Before embarking on data import and processing journey, download the eye-tracking data from the **Triplet Viewing** project to a temporary directory.
+
+```{r data-download, cache=TRUE}
+temp_path <- file.path(tempdir(), "my_osfr_downloads")
+dir.create(temp_path)
+
+osfr::osf_retrieve_node("T3bxj") |>
+  osfr::osf_ls_files(n_max = 1e2) |>
+  dplyr::filter(name %in% c("asc", "responses")) |>
+  osfr::osf_download(temp_path, recurse = TRUE, conflicts = "rewrite")
+```
+
+## {tripletviewing}
+
+To minimise friction that would be created by including a bunch of code for _tripletviewing_-specific data processing, we will leverage helper functions distributed via the `{tripletviewing}` R package to take care of data housekeeping processes such as catch trials removal and majority coding transformation.
+
+To install the package, you first need to get your hands on its GitHub repository (<https://github.com/jirilukavsky/tripletviewing.git>), and then install its current iteration.
+
+```r
+# If you do not have the devtools package, install it by uncommenting the following line:
+#install.packages(devtools)
+devtools::install_deps()
+devtools::install_github("jirilukavsky/tripletviewing", upgrade = "never")
+```
+
+---
+
+# Data Preparation
+
+## Data Import
+
+The data we are about to import were collected using the EyeLink eye-tracking system, with the experiment written in the Experiment Builder software. The data are store in the form of ASC files in the `/asc` directory containing eye-tracking recordings, and accompanying TXT files in the `/responses` folder containing participants response data.
+
+The `mathpsychr::import_eyelink_data()` function was build specifically for this directory structure:
+
+```{r data-import, cache=TRUE}
+# Each directory will be entered separately. Note, however, that if you have had saved
+# both ASC eye-tracking data and TXT response data into the same folder, the import would
+# still work as long as the same recording files had the same names (e.g., "rec1.asc" and
+# "rec1.txt" for recording 1 eye-tracking and response data respectively).
+et_dir <- file.path(temp_path, "asc")
+resp_dir <- file.path(temp_path, "responses")
+
+# By default `import_eyelink_data()` includes all columns present in the response data,
+# however, it is usually sensible to select just a subset. We can do so by stating their
+# names (in lowerecase although the function will force lowercase if you happened to forget)
+# explicitly. We can also specify new names this columns ought to take on after importing.
+col_names <- c(
+  counterbalancing = "condition", # Variable originally called "condition" will be imported as "counterbalancing"
+  block = "block",
+  trial = "trial", # `import_eyelink_data()` detects and imports trial_index by default; "trial" differs in this dataset by virtue of beginning anew every block, while "trial_index" does not
+  query = "top", # Variable originally called "top" will be imported as "query"
+  left = "left",
+  right = "right",
+  triplet = "triplet",
+  response = "response",
+  response_time = "rt"
+)
+
+# With everything in place, the data import can be run via:
+raw_data <- mathpsychr::import_eyelink_data(
+  eyelink_dir = et_dir,
+  response_dir = resp_dir,
+  response_cols = col_names
+)
+```
+
+## Data Formatting
+
+The raw data import described above yields a `list()` with:
+
+* `$meta_data`  
+  recording's ID, date, EyeLink and screen characteristics,
+* `$response_data`  
+  recording's ID, trial index, and columns selected during data import),
+* `$fixations`  
+  recording's ID, trial index, and record fixations including their timing relative to the stimulus onset,
+* `$raw_data`  
+  a list of EyeLink raw recordings (of interest to aficionados who want to build their analysis from scratch).
+
+However, to enjoy the tools that `{mathpsychr}` affords for eye-tracking data analysis, we first need to build a `mpr_eyelink_eyetracking` object. This is done via the `mathpsychr::eyelink_eyetracking()` function, which takes in the following arguments.^[For more detailed description see `help("eyelink_eyetracking", package = "mathpsychr")`)]
+
+| Argument    | Description |
+|-------------|-------------|
+| `fixations` | Fixation data |
+| `layout`    | Stimulus screen layout containing the areas of interest |
+| `metadata`  | EyeLink settings |
+| `responses` | Response data |
+
+While `fixations`, `metadata`, and `responses` map directly to data import results (although it often may make sense to transform them before building, see below), `layout` represents an added component, which informs `{mathpsychr}` about the display participants saw on their monitors during the experiment.
+
+### AOI-centred Workflow
+
+Currently, `{mathpsychr}` relies on workflow that depends on the Areas of Interest (AOI). AOI refers to a pre-defined section of the display with special meaning, e.g., full stimuli, competing response options, response buttons or stimulus features of interest.^[In future, non-AOI analyses may end up being implemented too.]
+
+### Stimulus Layout
+
+The **Triplet Viewing** experiment analysed here employs a triplet decision task with one query image on top of two reference images, arranged in an equilateral triangle. The task is to decide which of the two reference images is more similar to the query. Naturally, the *top query*, *left reference*, and *right reference* images serve as AOIs.
+
+```{r triplet-layout}
+layout <- data.frame(
+  aoi = c("query", "left", "right"),
+  x = c(840, 665, 1015), # horizontal centre point of each AOI 
+  y = c(313, 616, 616),  # vertical centre point of each AOI
+  w = 200,               # widths 200 pixels
+  h = 250                # height 250 pixels
+)
+```
+
+### If You Need to Transform Data, Do It Now
+
+```{r triplet-building}
+triplet_data <- tripletviewing::build_tripletviewing_data(
+  meta_data = raw_data$meta_data,
+  resp_data = raw_data$response_data,
+  fix_data = raw_data$fixations,
+  id_col = "dataset_id"
+)
+
+catch_trials <- tripletviewing:::.identify_catch_trials(triplet_data$data)
+
+fixation_data <- triplet_data$fix |>
+  dplyr::filter(
+    block %in% 1:5,
+    !trial %in% catch_trials
+  )
+
+response_data <- triplet_data$data |>
+  tripletviewing::append_majority_coding(id_col = "dataset_id")
+```
+
+### Putting It All Together
+
+```{r eyelink-construction}
+eyelink_data <- eyelink_eyetracking(
+  fixations = fixation_data,
+  layout    = layout,
+  metadata  = raw_data$meta_data,
+  responses = response_data
+)
+```
+
+---
+
+# Gaze Cascade
+
+The *Gaze cascade* refers to an observation that in the last moments before selecting and option in the two-alternative forced choice (2AFC) task, participants' gaze drifts towards the later selected option more than to the later non-selected options. It can be demonstrated by showing that the `chosen/non-chosen` dwell time ratio as a function of time to decision follows approximately sigmoidal function with upward slope some short time before the decision is made.
+
+## Data Processing
+
+```{r cascade-processing}
+gc_data <- process(
+  x                 = eyelink_data,
+  type              = "cascade",
+  trial_vars        = c("block", "trial"),
+  window            = 3500,
+  n_bins            = 105L,
+  response_time_col = "response_time",
+  chosen_aoi_col    = "chosen_aoi"
+)
+
+head(as.data.frame(gc_data), 10)
+```
+
+## Results Visualisation
+
+```{r cascade-plot, fig.width=7.0, fig.height=4.4}
+plot(gc_data, fit_type = "none") +
+  ggplot2::theme(legend.position = "bottom")
+plot(gc_data, fit_type = "sigmoid") +
+  ggplot2::theme(legend.position = "bottom")
+plot(gc_data, fit_type = "both", show_clusters = FALSE) +
+  ggplot2::theme(legend.position = "bottom")
+```
+
+---
+
+# Eye-tracking indexes
+
+
+## Data Processing
+
+
+## Indexes Visualisation
+
+
+## Follow-up Analysis
