@@ -207,7 +207,7 @@
 .et_cascade_theme <- function() {
   ggplot2::theme_classic(base_size = 11) +
     ggplot2::theme(
-      legend.position   = c(0.09, 0.90),
+      legend.position   = "right",
       legend.background = ggplot2::element_rect(
         fill      = "white",
         colour    = "grey80",
@@ -301,8 +301,8 @@ plot.mpr_gaze_cascade <- function(
 
   cascade_data <- x$derivatives |>
     dplyr::mutate(
-      .time    = (.data$bin - 0.5) * window / n_bins - window,
-      .cluster = do.call(
+      time = (.data$bin - 0.5) * window / n_bins - window,
+      cluster = do.call(
         interaction,
         c(dplyr::pick(tidyselect::all_of(cluster_cols)), list(sep = "-"))
       )
@@ -326,14 +326,14 @@ plot.mpr_gaze_cascade <- function(
   # --- Fit labels (R2 omitted in faceted mode) --------------------------------
   sigmoid_label <- if (!is.null(df_sigmoid)) {
     if (faceted) "Sigmoid Fit" else
-      sprintf("Sigmoid Fit (R\u00b2 = %.2f)", df_sigmoid$.r2[1L])
+      sprintf("Sigmoid Fit (R\u00b2 = %.2f)", df_sigmoid$r2[1L])
   } else {
     NULL
   }
 
   piecewise_label <- if (!is.null(df_piecewise)) {
     if (faceted) "Piecewise Fit" else
-      sprintf("Piecewise Fit (R\u00b2 = %.2f)", df_piecewise$.r2[1L])
+      sprintf("Piecewise Fit (R\u00b2 = %.2f)", df_piecewise$r2[1L])
   } else {
     NULL
   }
@@ -380,20 +380,54 @@ plot.mpr_gaze_cascade <- function(
     p <- p + ggplot2::geom_line(
       data      = cascade_data,
       ggplot2::aes(
-        x     = .data$.time,
+        x     = .data$time,
         y     = .data$average_prop_chosen,
-        group = .data$.cluster
+        group = .data$cluster
       ),
-      colour    = "grey70",
+      colour    = "grey80",
       linewidth = 0.3,
       alpha     = 0.5
     )
   }
 
+  chance_df <- if (faceted) {
+    dplyr::distinct(df_grand, dplyr::across(tidyselect::all_of(facet_by))) |>
+      dplyr::mutate(yint = 0.5)
+  } else {
+    data.frame(yint = 0.5)
+  }
+
   p <- p + ggplot2::geom_hline(
-    ggplot2::aes(yintercept = 0.5, colour = "Chance (0.5)"),
+    data = chance_df,
+    ggplot2::aes(yintercept = .data$yint, colour = "Chance (0.5)"),
     linetype = "dashed"
   )
+
+  if (!is.null(df_sigmoid)) {
+    p <- p + ggplot2::geom_line(
+      data      = df_sigmoid,
+      ggplot2::aes(
+        x      = .data$time,
+        y      = .data$y_fit,
+        colour = sigmoid_label
+      ),
+      linewidth = 2.5,
+      alpha = 0.75
+    )
+  }
+
+  if (!is.null(df_piecewise)) {
+    p <- p + ggplot2::geom_line(
+      data      = df_piecewise,
+      ggplot2::aes(
+        x      = .data$time,
+        y      = .data$y_fit,
+        colour = piecewise_label
+      ),
+      linewidth = 2.5,
+      alpha = 0.75
+    )
+  }
 
   if (show_grand_avg) {
     p <- p +
@@ -416,32 +450,8 @@ plot.mpr_gaze_cascade <- function(
           y      = .data$mean_prop,
           colour = "Grand Average"
         ),
-        linewidth = 1.2
+        linewidth = 0.75
       )
-  }
-
-  if (!is.null(df_sigmoid)) {
-    p <- p + ggplot2::geom_line(
-      data      = df_sigmoid,
-      ggplot2::aes(
-        x      = .data$time,
-        y      = .data$.y_fit,
-        colour = sigmoid_label
-      ),
-      linewidth = 1.2
-    )
-  }
-
-  if (!is.null(df_piecewise)) {
-    p <- p + ggplot2::geom_line(
-      data      = df_piecewise,
-      ggplot2::aes(
-        x      = .data$time,
-        y      = .data$.y_fit,
-        colour = piecewise_label
-      ),
-      linewidth = 1.2
-    )
   }
 
   # --- Scales, legend and theme -----------------------------------------------
@@ -462,7 +472,15 @@ plot.mpr_gaze_cascade <- function(
         )
       )
     ) +
-    ggplot2::scale_x_continuous(breaks = pretty(c(-window, 0))) +
+    ggplot2::scale_x_continuous(
+      breaks = pretty(c(-window, 0)),
+      limits = c(-window, 0),
+      expand = ggplot2::expansion(mult = c(0.025, 0.025))
+    ) +
+    ggplot2::scale_y_continuous(
+      breaks = pretty(c(0, 1)),
+      limits = c(0, 1)
+    ) +
     ggplot2::labs(
       x = "Time before decision (s)",
       y = "Likelihood of fixating chosen image"

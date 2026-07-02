@@ -47,8 +47,11 @@
     response_cols <- rlang::set_names(
       setdiff(colnames(resp_data), "trial_index")
     )
-  } else if (is.null(names(response_cols))) {
-    names(response_cols) <- response_cols
+  } else {
+    if (is.null(names(response_cols))) {
+      names(response_cols) <- response_cols
+    }
+    response_cols <- tolower(response_cols)
   }
 
   k_et   <- max(et_data$raw$block)
