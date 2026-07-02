@@ -13,6 +13,7 @@ process(x, ...)
 \method{process}{mpr_eyelink_eyetracking}(
   x,
   type = c("indexes", "cascade"),
+  trial_vars = "trial_index",
   grp_vars = NULL,
   stats = c("fix_count", "dwell_total"),
   window = Inf,
@@ -41,6 +42,10 @@ Time runs backwards in \code{n_bins} equal-width bins spanning
 \verb{[-window, 0]} seconds, and returns one row per identifier × \code{grp_vars}
 × bin. Requires \code{x$responses} to be non-\code{NULL}. The \code{n_bins}, \code{window},
 \code{response_time_col}, and \code{chosen_aoi_col} arguments apply.}
+
+\item{trial_vars}{Character vector of columns uniquely identifying each
+experimental trial. The column(s) (\code{"trial_index"} by default) must be
+present in \code{x$fixations} and in \code{x$responses}.}
 
 \item{grp_vars}{Character vector of additional grouping variable names
 present in \code{x$fixations} (and in \code{x$responses} when

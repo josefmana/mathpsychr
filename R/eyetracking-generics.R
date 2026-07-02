@@ -18,6 +18,9 @@
 #'   × bin. Requires `x$responses` to be non-`NULL`. The `n_bins`, `window`,
 #'   `response_time_col`, and `chosen_aoi_col` arguments apply.
 #'
+#' @param trial_vars Character vector of columns uniquely identifying each
+#'   experimental trial. The column(s) (`"trial_index"` by default) must be
+#'   present in `x$fixations` and in `x$responses`.
 #' @param grp_vars Character vector of additional grouping variable names
 #'   present in `x$fixations` (and in `x$responses` when
 #'   `type = "cascade"`), or `NULL` (default) for no extra grouping beyond

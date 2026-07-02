@@ -75,7 +75,7 @@
   result <- dplyr::left_join(
     data,
     data_aoi_fixated,
-    by = "original_cols"
+    by = original_cols
   )
 
   # Guard against overlapping AOIs
@@ -337,6 +337,9 @@
 #'
 #' @param x An `mpr_eyelink_eyetracking` object; `x$responses` must not be
 #'   `NULL`.
+#' @param trial_vars Character vector of variables denoting a unique trial
+#'   identification. These variables need to be present in bot `x$fixations`
+#'   and `x$responses`
 #' @param grp_vars Character vector of grouping variable names, or `NULL`.
 #' @param n_bins Integer(1). Number of equal-width time bins.
 #' @param window Numeric(1). Positive, finite span of the cascade window.
@@ -349,6 +352,7 @@
 #' @noRd
 .process_gaze_cascade <- function(
     x,
+    trial_vars,
     grp_vars,
     n_bins,
     window,
@@ -368,6 +372,22 @@
     cli::cli_abort(c(
             "`window` must be a finite, positive number for gaze-cascade analysis.",
       "x" = "Received {.val {window}}."
+    ))
+  }
+
+  response_missing_trial_cols <- setdiff(trial_vars, colnames(x$responses))
+  if (length(response_missing_trial_cols) > 0L) {
+    cli::cli_abort(c(
+            "`trial_cols` must be present in `x$responses`.",
+      "x" = "The following column{?} {?is/are} missing: {.var {response_missing_trial_cols}}."
+    ))
+  }
+
+  fixations_missing_trial_cols <- setdiff(trial_vars, colnames(x$fixations))
+  if (length(fixations_missing_trial_cols) > 0L) {
+    cli::cli_abort(c(
+            "`trial_cols` must be present in `x$fixations`.",
+      "x" = "The following column{?} {?is/are} missing: {.var {fixations_missing_trial_cols}}."
     ))
   }
 
@@ -420,7 +440,7 @@
     .annotate_fixations(x$layout) |>
     dplyr::left_join(
       resp,
-      by = join_by_id,
+      by = c(join_by_id, trial_vars),
       relationship = "many-to-one"
     )
 
@@ -460,7 +480,7 @@
       )
     ) |>
     dplyr::group_by(
-      dplyr::across(tidyselect::all_of(c(grp_full, "bin", "class")))
+      dplyr::across(tidyselect::all_of(c(grp_full, trial_vars, "bin", "class")))
     ) |>
     dplyr::summarise(
       dwell = sum(.data$overlap),
@@ -513,6 +533,7 @@
 process.mpr_eyelink_eyetracking <- function(
     x,
     type              = c("indexes", "cascade"),
+    trial_vars        = "trial_index",
     grp_vars          = NULL,
     stats             = c("fix_count", "dwell_total"),
     window            = Inf,
@@ -565,7 +586,7 @@ process.mpr_eyelink_eyetracking <- function(
       x, grp_vars, stats, window, query_aoi, reference_aois
     ),
     cascade = .process_gaze_cascade(
-      x, grp_vars, n_bins, window, response_time_col, chosen_aoi_col
+      x, trial_vars, grp_vars, n_bins, window, response_time_col, chosen_aoi_col
     )
   )
 
