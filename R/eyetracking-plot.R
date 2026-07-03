@@ -430,24 +430,36 @@
 #'
 #' Renders one panel per requested curve type (grand average, sigmoid fit,
 #' piecewise fit), colour-coded by `colour_by` group within each panel. Used
-#' by [plot.mpr_gaze_cascade()] whenever `colour_by` is set and `fit_type`
-#' is not `"none"`. Individual cluster curves and CI ribbons are never shown
-#' in this mode: with one curve per group per panel, cluster spaghetti and
-#' uncertainty bands would compete with the group comparison the plot exists
-#' to make.
+#' by [plot.mpr_gaze_cascade()] to compare two or three curve types side by
+#' side: `fit_type == "both"`, or a single fit type shown alongside the
+#' grand average (`show_grand_avg = TRUE`), whenever `x` was processed with
+#' `grp_vars` set (from which `plot.mpr_gaze_cascade()` derives
+#' `colour_by`). A single fit type with `show_grand_avg = FALSE` is handled
+#' elsewhere -- see [.plot_cascade_single_or_grouped()] -- since with only
+#' one curve type requested there is nothing to compare side by side.
+#' Individual cluster curves and CI ribbons are never shown in this mode:
+#' with one curve per group per panel, cluster spaghetti and uncertainty
+#' bands would compete with the group comparison the plot exists to make.
 #'
-#' Each panel gets its own legend (built via separate [ggplot2::ggplot()]
-#' calls composed with [patchwork::wrap_plots()], not [ggplot2::facet_wrap()])
-#' because the label text differs by panel: sigmoid panels show R-squared,
-#' piecewise panels show R-squared and slope, and the grand-average panel
-#' shows neither. A single faceted plot cannot carry per-panel legend text,
-#' only per-panel data.
+#' Each panel gets its own legend, drawn inside the panel (see
+#' [.build_curve_facet_panel()]) so it doesn't cost width in a side-by-side
+#' layout, and built via separate [ggplot2::ggplot()] calls composed with
+#' [patchwork::wrap_plots()] (not [ggplot2::facet_wrap()]) because the label
+#' text differs by panel: sigmoid and piecewise panels show R-squared, the
+#' grand-average panel shows neither. A single faceted plot cannot carry
+#' per-panel legend text, only per-panel data.
 #'
 #' @inheritParams plot.mpr_gaze_cascade
+#' @param colour_by Character vector of grouping column names, derived by
+#'   the caller from the `grp_vars` attribute of `x$derivatives`.
 #' @param window Numeric(1). Width of the cascade time window in seconds.
 #' @param n_bins Integer(1). Number of equal-width time bins.
 #'
-#' @returns A `patchwork` object (subclass of [ggplot2::ggplot()]).
+#' @returns Ordinarily a `patchwork` object (subclass of [ggplot2::ggplot()])
+#'   with two or three panels side by side. Falls back to a bare
+#'   [ggplot2::ggplot()] in the edge case where every group's fit failed for
+#'   all but one requested curve type, leaving a single panel with nothing
+#'   left to compare.
 #'
 #' @noRd
 .plot_cascade_by_curve_type <- function(
@@ -493,7 +505,7 @@
 
   if (length(panels) == 0L) {
     cli::cli_abort(c(
-            "No curves could be fit or computed for the requested {.arg fit_type}.",
+      "No curves could be fit or computed for the requested {.arg fit_type}.",
       "i" = "Every group's fit failed; see any {.fn nls} warnings above."
     ))
   }
@@ -508,16 +520,20 @@
 
 #' Plot a gaze-cascade analysis in a single panel, or faceted by group
 #'
-#' Used by [plot.mpr_gaze_cascade()] whenever `colour_by` is `NULL` (a single
-#' panel with all overlaid curves sharing one legend) or `fit_type` is
-#' `"none"` (one panel per `colour_by` group via [ggplot2::facet_wrap()],
-#' with fits computed independently per panel and R-squared omitted from
-#' labels since it would otherwise repeat once per panel). When faceted, the
-#' grand-average line is additionally colour-coded by group; this duplicates
-#' the facet split but keeps the colour legend informative when panels are
-#' compared side by side.
+#' Used by [plot.mpr_gaze_cascade()] whenever `x` was processed without
+#' `grp_vars` (a single panel with all overlaid curves sharing one legend),
+#' or whenever there is only one thing to show per group -- `fit_type ==
+#' "none"`, or a single fit type with `show_grand_avg = FALSE` -- via
+#' [ggplot2::facet_wrap()], with fits computed independently per panel and
+#' R-squared omitted from labels since it would otherwise repeat once per
+#' panel. When faceted, the grand-average line and its CI ribbon are
+#' additionally colour-coded by group (the ribbon via a fill scale sharing
+#' the line's palette); this duplicates the facet split but keeps the
+#' legend informative when panels are compared side by side.
 #'
 #' @inheritParams plot.mpr_gaze_cascade
+#' @param colour_by Character vector of grouping column names, derived by
+#'   the caller from the `grp_vars` attribute of `x$derivatives`, or `NULL`.
 #' @param window Numeric(1). Width of the cascade time window in seconds.
 #' @param n_bins Integer(1). Number of equal-width time bins.
 #'
@@ -797,6 +813,11 @@
 #' the grand-average line and its 95% CI ribbon. One or both of a four-parameter
 #' sigmoid and a piecewise linear model can be overlaid.
 #'
+#' If `process(..., type = "cascade")` was called with `grp_vars` set, the
+#' plot is automatically grouped on those same columns (see Details). If
+#' `grp_vars` was `NULL` at `process()` time, the plot has nothing to group on
+#' and is drawn as a single panel.
+#'
 #' @param x An `mpr_gaze_cascade`, i.e., `mpr_eyelink_eyetracking` object on
 #'   which `process(..., type = "cascade")` has been called.
 #' @param show_clusters Logical(1). Whether to draw individual cluster-level
@@ -805,30 +826,25 @@
 #' @param show_grand_avg Logical(1). Whether to draw the grand-average line
 #'   (and, outside of curve-type faceting, its 95% CI ribbon). Defaults to
 #'   `TRUE`. Set to `FALSE` to show fit curves only. Interacts with
-#'   `fit_type` when `colour_by` is set; see Details.
+#'   `fit_type` when `x` is grouped; see Details.
 #' @param fit_type Character(1). Which curve model(s) to overlay: `"sigmoid"`
 #'   (default), `"piecewise"`, `"both"`, or `"none"`. The sigmoid is a
 #'   four-parameter logistic; the piecewise linear is a three-parameter hinge
 #'   (baseline, breakpoint, slope). Both are fit via nonlinear least squares
 #'   ([stats::nls()]). A warning is issued when fitting fails and the
-#'   corresponding layer or panel is silently dropped. When `colour_by` is
-#'   set, `fit_type` also determines the plot's overall layout; see
-#'   Details.
-#' @param colour_by Character vector. Names of one or more columns in
-#'   `x$derivatives` to group by (e.g., a confidence-level column). Fits and
-#'   grand averages are computed independently per group. Defaults to `NULL`
-#'   (no grouping). See Details for how this interacts with `fit_type`.
+#'   corresponding layer or panel is silently dropped. When `x` is grouped
+#'   (see Details on `grp_vars`), `fit_type` also determines the plot's
+#'   overall layout; see Details.
 #' @param ... Currently unused.
 #'
 #' @details
-#' When `colour_by` names one or more grouping columns in `x$derivatives`
-#' (e.g., a confidence-level column), the plot's structure depends on
-#' `fit_type`:
+#' When `x` was processed with `grp_vars` set (i.e., `process(x, type =
+#' "cascade", grp_vars = ...)`), the plot's structure depends on `fit_type`:
 #' \describe{
 #'   \item{`fit_type` names at least one fit and at least two curves are
 #'     requested overall (i.e., `fit_type == "both"`, or `show_grand_avg`
 #'     is `TRUE` together with a single fit type)}{One panel per curve type
-#'     (grand average / sigmoid / piecewise), colour-coded by `colour_by`
+#'     (grand average / sigmoid / piecewise), colour-coded by `grp_vars`
 #'     group within each panel, composed via [patchwork::wrap_plots()]. No
 #'     cluster curves or CI ribbons are drawn in this mode. Each panel's
 #'     legend is drawn inside the panel (not to its right) to avoid losing
@@ -839,15 +855,15 @@
 #'     side-by-side: the single panel described above is returned directly
 #'     as a plain [ggplot2::ggplot()], not wrapped in a one-element
 #'     `patchwork`.}
-#'   \item{`fit_type == "none"`}{One panel per `colour_by` group via
+#'   \item{`fit_type == "none"`}{One panel per `grp_vars` group via
 #'     [ggplot2::facet_wrap()], each showing cluster curves (if requested)
 #'     and the grand average with its CI ribbon, colour-coded (redundantly,
-#'     since the facet already separates groups) by `colour_by` group. The
-#'     CI ribbon's shading colour-matches its group's mean line.}
+#'     since the facet already separates groups) by group. The CI ribbon's
+#'     shading colour-matches its group's mean line.}
 #' }
 #'
-#' When `colour_by` is `NULL`, a single panel is produced with all requested
-#' curves overlaid and sharing one legend.
+#' When `x` was processed without `grp_vars`, a single panel is produced
+#' with all requested curves overlaid and sharing one legend.
 #'
 #'
 #' @returns A [ggplot2::ggplot()] object, or (when comparing two or three
@@ -861,7 +877,6 @@ plot.mpr_gaze_cascade <- function(
     show_clusters  = TRUE,
     show_grand_avg = TRUE,
     fit_type     = c("sigmoid", "piecewise", "both", "none"),
-    colour_by      = NULL,
     ...
 ) {
   # --- Preconditions ----------------------------------------------------------
@@ -874,6 +889,7 @@ plot.mpr_gaze_cascade <- function(
 
   window <- attr(x$derivatives, "window")
   n_bins <- attr(x$derivatives, "n_bins")
+  grp_vars <- attr(x$derivatives, "grp_vars")
 
   if (is.null(window) || is.null(n_bins)) {
     cli::cli_abort(c(
@@ -882,16 +898,18 @@ plot.mpr_gaze_cascade <- function(
     ))
   }
 
-  fit_type  <- match.arg(fit_type)
-  grouped_by  <- !is.null(colour_by)
+  fit_type   <- match.arg(fit_type)
+  colour_by  <- grp_vars
+  grouped_by <- !is.null(colour_by)
 
   if (grouped_by) {
     missing_group <- setdiff(colour_by, colnames(x$derivatives))
     if (length(missing_group) > 0L) {
       cli::cli_abort(c(
-        "`colour_by` column{?s} not found in `x$derivatives`.",
+        "`grp_vars` from `process()` not found in `x$derivatives`.",
         "x" = "Missing: {.val {missing_group}}.",
-        "i" = "Available columns: {.val {colnames(x$derivatives)}}."
+        "i" = "Available columns: {.val {colnames(x$derivatives)}}.",
+        "i" = "This shouldn't happen from normal use; `x$derivatives` may have been modified after `process()`."
       ))
     }
   }

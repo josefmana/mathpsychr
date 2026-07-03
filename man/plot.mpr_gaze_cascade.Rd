@@ -9,7 +9,6 @@
   show_clusters = TRUE,
   show_grand_avg = TRUE,
   fit_type = c("sigmoid", "piecewise", "both", "none"),
-  colour_by = NULL,
   ...
 )
 }
@@ -24,21 +23,16 @@ when faceting by curve type; see Details.}
 \item{show_grand_avg}{Logical(1). Whether to draw the grand-average line
 (and, outside of curve-type faceting, its 95\% CI ribbon). Defaults to
 \code{TRUE}. Set to \code{FALSE} to show fit curves only. Interacts with
-\code{fit_type} when \code{colour_by} is set; see Details.}
+\code{fit_type} when \code{x} is grouped; see Details.}
 
 \item{fit_type}{Character(1). Which curve model(s) to overlay: \code{"sigmoid"}
 (default), \code{"piecewise"}, \code{"both"}, or \code{"none"}. The sigmoid is a
 four-parameter logistic; the piecewise linear is a three-parameter hinge
 (baseline, breakpoint, slope). Both are fit via nonlinear least squares
 (\code{\link[stats:nls]{stats::nls()}}). A warning is issued when fitting fails and the
-corresponding layer or panel is silently dropped. When \code{colour_by} is
-set, \code{fit_type} also determines the plot's overall layout; see
-Details.}
-
-\item{colour_by}{Character vector. Names of one or more columns in
-\code{x$derivatives} to group by (e.g., a confidence-level column). Fits and
-grand averages are computed independently per group. Defaults to \code{NULL}
-(no grouping). See Details for how this interacts with \code{fit_type}.}
+corresponding layer or panel is silently dropped. When \code{x} is grouped
+(see Details on \code{grp_vars}), \code{fit_type} also determines the plot's
+overall layout; see Details.}
 
 \item{...}{Currently unused.}
 }
@@ -53,14 +47,17 @@ the grand-average line and its 95\% CI ribbon. One or both of a four-parameter
 sigmoid and a piecewise linear model can be overlaid.
 }
 \details{
-When \code{colour_by} names one or more grouping columns in \code{x$derivatives}
-(e.g., a confidence-level column), the plot's structure depends on
-\code{fit_type}:
+If \code{process(..., type = "cascade")} was called with \code{grp_vars} set, the
+plot is automatically grouped on those same columns (see Details). If
+\code{grp_vars} was \code{NULL} at \code{process()} time, the plot has nothing to group on
+and is drawn as a single panel.
+
+When \code{x} was processed with \code{grp_vars} set (i.e., \code{process(x, type = "cascade", grp_vars = ...)}), the plot's structure depends on \code{fit_type}:
 \describe{
 \item{\code{fit_type} names at least one fit and at least two curves are
 requested overall (i.e., \code{fit_type == "both"}, or \code{show_grand_avg}
 is \code{TRUE} together with a single fit type)}{One panel per curve type
-(grand average / sigmoid / piecewise), colour-coded by \code{colour_by}
+(grand average / sigmoid / piecewise), colour-coded by \code{grp_vars}
 group within each panel, composed via \code{\link[patchwork:wrap_plots]{patchwork::wrap_plots()}}. No
 cluster curves or CI ribbons are drawn in this mode. Each panel's
 legend is drawn inside the panel (not to its right) to avoid losing
@@ -71,15 +68,15 @@ There is only one curve type to show, so there is nothing to compare
 side-by-side: the single panel described above is returned directly
 as a plain \code{\link[ggplot2:ggplot]{ggplot2::ggplot()}}, not wrapped in a one-element
 \code{patchwork}.}
-\item{\code{fit_type == "none"}}{One panel per \code{colour_by} group via
+\item{\code{fit_type == "none"}}{One panel per \code{grp_vars} group via
 \code{\link[ggplot2:facet_wrap]{ggplot2::facet_wrap()}}, each showing cluster curves (if requested)
 and the grand average with its CI ribbon, colour-coded (redundantly,
-since the facet already separates groups) by \code{colour_by} group. The
-CI ribbon's shading colour-matches its group's mean line.}
+since the facet already separates groups) by group. The CI ribbon's
+shading colour-matches its group's mean line.}
 }
 
-When \code{colour_by} is \code{NULL}, a single panel is produced with all requested
-curves overlaid and sharing one legend.
+When \code{x} was processed without \code{grp_vars}, a single panel is produced
+with all requested curves overlaid and sharing one legend.
 }
 \seealso{
 Other eyetracking: 

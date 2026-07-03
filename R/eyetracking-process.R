@@ -347,7 +347,10 @@
 #' @param chosen_aoi_col Character(1). Chosen AOI column in `x$responses`.
 #'
 #' @returns A data.frame with one row per identifier x `grp_vars` x `bin`,
-#'   carrying `average_prop_chosen` and `n_trials`.
+#'   carrying `average_prop_chosen` and `n_trials`. Carries `window`,
+#'   `n_bins`, and `grp_vars` as attributes so that
+#'   [plot.mpr_gaze_cascade()] can reconstruct the time axis and grouping
+#'   without the user re-supplying them.
 #'
 #' @noRd
 .process_gaze_cascade <- function(
@@ -387,6 +390,7 @@
   if (length(fixations_missing_trial_cols) > 0L) {
     cli::cli_abort(c(
             "`trial_cols` must be present in `x$fixations`.",
+      "`trial_cols` must be present in `x$fixations`.",
       "x" = "The following column{?} {?is/are} missing: {.var {fixations_missing_trial_cols}}."
     ))
   }
@@ -520,10 +524,12 @@
       .groups = "drop"
     )
 
-  # Stamp window/n_bins so that plot.mpr_gaze_cascade can reconstruct the time
-  # axis without requiring the user to re-supply these arguments.
-  attr(output, "window") <- window
-  attr(output, "n_bins") <- n_bins
+  # Stamp window/n_bins/grp_vars so that plot.mpr_gaze_cascade can
+  # reconstruct the time axis and grouping without requiring the user to
+  # re-supply these arguments.
+  attr(output, "window")   <- window
+  attr(output, "n_bins")   <- n_bins
+  attr(output, "grp_vars") <- grp_vars
   output
 }
 
