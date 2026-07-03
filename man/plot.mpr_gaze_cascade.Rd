@@ -9,7 +9,7 @@
   show_clusters = TRUE,
   show_grand_avg = TRUE,
   fit_type = c("sigmoid", "piecewise", "both", "none"),
-  facet_by = NULL,
+  colour_by = NULL,
   ...
 )
 }
@@ -18,36 +18,68 @@
 which \code{process(..., type = "cascade")} has been called.}
 
 \item{show_clusters}{Logical(1). Whether to draw individual cluster-level
-curves in the background. Defaults to \code{TRUE}.}
+curves in the background. Defaults to \code{TRUE}. Ignored (never drawn)
+when faceting by curve type; see Details.}
 
 \item{show_grand_avg}{Logical(1). Whether to draw the grand-average line
-and its 95\% CI ribbon. Defaults to \code{TRUE}. Set to \code{FALSE} to show fit
-curves only.}
+(and, outside of curve-type faceting, its 95\% CI ribbon). Defaults to
+\code{TRUE}. Set to \code{FALSE} to show fit curves only. Interacts with
+\code{fit_type} when \code{colour_by} is set; see Details.}
 
 \item{fit_type}{Character(1). Which curve model(s) to overlay: \code{"sigmoid"}
 (default), \code{"piecewise"}, \code{"both"}, or \code{"none"}. The sigmoid is a
 four-parameter logistic; the piecewise linear is a three-parameter hinge
 (baseline, breakpoint, slope). Both are fit via nonlinear least squares
 (\code{\link[stats:nls]{stats::nls()}}). A warning is issued when fitting fails and the
-corresponding layer is silently dropped.}
+corresponding layer or panel is silently dropped. When \code{colour_by} is
+set, \code{fit_type} also determines the plot's overall layout; see
+Details.}
 
-\item{facet_by}{Character vector. Names of one or more columns in
-\code{x$derivatives} to facet by using \code{\link[ggplot2:facet_wrap]{ggplot2::facet_wrap()}}. Fits and
-grand averages are computed independently per panel. Defaults to \code{NULL}
-(no faceting).}
+\item{colour_by}{Character vector. Names of one or more columns in
+\code{x$derivatives} to group by (e.g., a confidence-level column). Fits and
+grand averages are computed independently per group. Defaults to \code{NULL}
+(no grouping). See Details for how this interacts with \code{fit_type}.}
 
 \item{...}{Currently unused.}
 }
 \value{
-A \code{\link[ggplot2:ggplot]{ggplot2::ggplot()}} object.
+A \code{\link[ggplot2:ggplot]{ggplot2::ggplot()}} object, or (when comparing two or three
+curve-type panels side by side) a \code{patchwork} object.
 }
 \description{
 Produces a gaze-cascade plot from an \code{mpr_gaze_cascade} object. Individual
 cluster curves (e.g., per-participant) are optionally drawn in grey behind
 the grand-average line and its 95\% CI ribbon. One or both of a four-parameter
-sigmoid and a piecewise linear model can be overlaid. The plot can be faceted
-by any grouping variable present in \code{x$derivatives} (e.g., a confidence level
-column), with fits computed independently per panel.
+sigmoid and a piecewise linear model can be overlaid.
+}
+\details{
+When \code{colour_by} names one or more grouping columns in \code{x$derivatives}
+(e.g., a confidence-level column), the plot's structure depends on
+\code{fit_type}:
+\describe{
+\item{\code{fit_type} names at least one fit and at least two curves are
+requested overall (i.e., \code{fit_type == "both"}, or \code{show_grand_avg}
+is \code{TRUE} together with a single fit type)}{One panel per curve type
+(grand average / sigmoid / piecewise), colour-coded by \code{colour_by}
+group within each panel, composed via \code{\link[patchwork:wrap_plots]{patchwork::wrap_plots()}}. No
+cluster curves or CI ribbons are drawn in this mode. Each panel's
+legend is drawn inside the panel (not to its right) to avoid losing
+width across several side-by-side panels, and carries only the group
+name plus R-squared (no cluster count or fit slope).}
+\item{\code{fit_type} names exactly one fit and \code{show_grand_avg = FALSE}}{
+There is only one curve type to show, so there is nothing to compare
+side-by-side: the single panel described above is returned directly
+as a plain \code{\link[ggplot2:ggplot]{ggplot2::ggplot()}}, not wrapped in a one-element
+\code{patchwork}.}
+\item{\code{fit_type == "none"}}{One panel per \code{colour_by} group via
+\code{\link[ggplot2:facet_wrap]{ggplot2::facet_wrap()}}, each showing cluster curves (if requested)
+and the grand average with its CI ribbon, colour-coded (redundantly,
+since the facet already separates groups) by \code{colour_by} group. The
+CI ribbon's shading colour-matches its group's mean line.}
+}
+
+When \code{colour_by} is \code{NULL}, a single panel is produced with all requested
+curves overlaid and sharing one legend.
 }
 \seealso{
 Other eyetracking: 
