@@ -21,7 +21,9 @@ Format an \code{mpr_eyetracking} object as a string
 \seealso{
 Other eyetracking: 
 \code{\link{as.data.frame.mpr_eyetracking}()},
+\code{\link{as_gt.mpr_cascade_fit}()},
 \code{\link{plot.mpr_gaze_cascade}()},
+\code{\link{print.mpr_cascade_fit}()},
 \code{\link{print.mpr_eyetracking}()}
 }
 \concept{eyetracking}

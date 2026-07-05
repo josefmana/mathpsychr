@@ -32,7 +32,7 @@
     }
 
   list(
-    power  = power,
+    power = power,
     type_s = type_s,
     type_m = type_m
   )
@@ -72,7 +72,7 @@
     }
 
   list(
-    power  = power,
+    power = power,
     type_s = type_s,
     type_m = type_m
   )
@@ -80,12 +80,16 @@
 
 
 #' @describeIn compute Method for `mpr_gelman_carlin_power` objects.
+#'
+#' @returns `x` with `$results` populated as a `data.frame` with columns
+#'   `effect_size`, `se`, `power`, `type_s`, `type_m`.
+#'
 #' @export
 compute.mpr_gelman_carlin_power <- function(x, ...) {
-  A      <- x$effect_size
-  s      <- if (length(x$se) == 1L) rep(x$se, length(A)) else x$se
-  alpha  <- x$alpha
-  df     <- x$df
+  A <- x$effect_size
+  s <- if (length(x$se) == 1L) rep(x$se, length(A)) else x$se
+  alpha <- x$alpha
+  df <- x$df
   n_sims <- x$n_sims
 
   if (is.infinite(df)) {

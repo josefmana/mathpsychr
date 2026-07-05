@@ -10,12 +10,13 @@ Description: Infrastructure for specifying, simulating, and evaluating
 License: MIT + file LICENSE
 Imports: 
     cli,
-    dplyr,
+    dplyr (>= 1.1),
     eyelinker,
     ggdag,
     ggplot2,
     glue,
     grid,
+    gt,
     purrr,
     readr,
     rlang,
@@ -34,6 +35,8 @@ Suggests:
     retrodesign,
     rmarkdown,
     testthat (>= 3.0.0),
+    tidyverse,
+    tripletviewing,
     withr
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)

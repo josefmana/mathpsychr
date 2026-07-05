@@ -81,7 +81,9 @@ with all requested curves overlaid and sharing one legend.
 \seealso{
 Other eyetracking: 
 \code{\link{as.data.frame.mpr_eyetracking}()},
+\code{\link{as_gt.mpr_cascade_fit}()},
 \code{\link{format.mpr_eyetracking}()},
+\code{\link{print.mpr_cascade_fit}()},
 \code{\link{print.mpr_eyetracking}()}
 }
 \concept{eyetracking}
