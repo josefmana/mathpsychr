@@ -21,6 +21,7 @@ In this vignette, we use data from a triplet decision task to demonstrate how to
 #library(tripletviewing) # see below on how to set-up
 library(tidyverse)
 library(mathpsychr)
+library(gt)
 ```
 
 # Prerequisites
@@ -189,16 +190,16 @@ The *Gaze cascade* refers to an observation that in the last moments before sele
 
 ```{r cascade-processing}
 gc_data <- process(
-  x                 = eyelink_data,
-  type              = "cascade",
-  trial_vars        = c("block", "trial"),
-  window            = 3500,
-  n_bins            = 105L,
+  eyelink_data,
+  type = "cascade",
+  trial_vars = c("block", "trial"),
+  window = 3500,
+  n_bins = 105L,
   response_time_col = "response_time",
-  chosen_aoi_col    = "chosen_aoi"
+  chosen_aoi_col = "chosen_aoi"
 )
 
-head(as.data.frame(gc_data), 10)
+print(gc_data)
 ```
 
 ## Results Visualisation
@@ -210,6 +211,60 @@ plot(gc_data, fit_type = "sigmoid") +
   ggplot2::theme(legend.position = "bottom")
 plot(gc_data, fit_type = "both", show_clusters = FALSE) +
   ggplot2::theme(legend.position = "bottom")
+```
+
+---
+
+## Group by Clusters
+
+```{r cascade-processing-grouped}
+gc_grouped_data <- process(
+  eyelink_data,
+  type = "cascade",
+  trial_vars = c("block", "trial"),
+  grp_vars = "difficulty_bin",    # NEW grouping variable
+  window = 3500,
+  n_bins = 105L,
+  response_time_col = "response_time",
+  chosen_aoi_col = "chosen_aoi"
+)
+
+print(gc_grouped_data, n = 10L)
+```
+
+```{r cascade-plot-grouped, fig.width=7.0, fig.height=4}
+plot(gc_grouped_data, fit_type = "none") +
+  ggplot2::theme(legend.position = "none")
+plot(gc_grouped_data, fit_type = "sigmoid", show_grand_avg = FALSE) +
+  ggplot2::theme(legend.position = "bottom")
+plot(gc_grouped_data, fit_type = "piecewise", show_grand_avg = FALSE) +
+  ggplot2::theme(legend.position = "bottom")
+```
+
+```{r cascade-plot-faceted, fig.width=7.0, fig.height=4}
+plot(gc_grouped_data, fit_type = "both")
+```
+
+```{r cascade-plot-faceted-failure, fig.width=7.0, fig.height=4}
+plot(gc_grouped_data, fit_type = "both") +
+  ggplot2::scale_y_continuous(limits = c(0.48, 0.82))
+```
+
+## Statistical Comparisons
+
+```{r cascade-bootstrap, cache=TRUE}
+gc_bootstrap <- compute(
+  gc_grouped_data,
+  fit_type = "both",
+  n_boot = 2000L,
+  alpha = 0.05,
+  seed = 1
+)
+```
+
+```{r cascade-bootstrap-tabs}
+as_gt(gc_bootstrap, type = "estimates")
+as_gt(gc_bootstrap, type = "differences")
 ```
 
 ---
