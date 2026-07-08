@@ -133,7 +133,7 @@ data.frame(
 
 ## Building an `mpr_eyelink_eyetracking` object
 
-`{mathpsychr}`'s downstream tools all expect a single `mpr_eyelink_eyetracking` object, built with `eyelink_eyetracking()`^[See `help("eyelink_eyetracking", package = "mathpsychr")` for full argument details.], using the following arguments:
+`{mathpsychr}`'s downstream tools all expect a single `mpr_eyelink_eyetracking` object, built with `build_eyelink_eyetracking()`^[See `help("build_eyelink_eyetracking", package = "mathpsychr")` for full argument details.], using the following arguments:
 
 ```{r eyelink-args-table, echo=FALSE}
 data.frame(
@@ -260,7 +260,7 @@ fixation_data
 With fixations, layout, meta-data, and responses all prepared, we can construct the `mpr_eyelink_eyetracking` object, which serves as the "common currency" for downstream data processing and analysis:
 
 ```{r eyelink-construction}
-eyelink_data <- eyelink_eyetracking(
+eyelink_data <- build_eyelink_eyetracking(
   fixations = fixation_data,
   layout = layout,
   metadata = raw_data$meta_data,
@@ -276,68 +276,140 @@ eyelink_data
 
 ---
 
-# Gaze Cascade {#cascade-section}
+# Gaze cascade
 
-The *Gaze cascade* refers to an observation that in the last moments before selecting and option in the two-alternative forced choice (2AFC) task, participants' gaze drifts towards the later selected option more than to the later non-selected options. It can be demonstrated by showing that the `chosen/non-chosen` dwell time ratio as a function of time to decision follows approximately sigmoidal function with upward slope some short time before the decision is made.
+The **gaze cascade** effect refers to the observation that, in the final moments before choosing between two options in the two-alternative forced choice (2AFC) task, participants' gaze drifts increasingly towards the option they are about to choose. It shows up as a `chosen/non-chosen` dwell-time ratio that rises precipitously as the response approaches.
 
-## Data Processing
+## Data processing
+
+Turning fixation data into a gaze cascade curve involves:
+
+1. aligning trials at the moment of response,
+2. selecting an analysis window preceding the response,
+3. dividing that window into evenly spaced bins,
+4. computing per bin proportion of fixation time on the chosen vs. non-chosen AOI,
+5. averaging appropriately (e.g., within participant).
+
+`{mathpsychr}` wraps all five steps into `process.mpr_eyelink_eytracking()` using `type = "cascade"`:
 
 ```{r cascade-processing}
 gc_data <- process(
   eyelink_data,
   type = "cascade",
-  trial_vars = c("block", "trial"),
+  trial_vars = c("block", "trial"),    # `process()` must know how to delineate single trials
   window = 3500,
   n_bins = 105L,
-  response_time_col = "response_time",
-  chosen_aoi_col = "chosen_aoi"
+  response_time_col = "response_time", # for step 1, aligning the trials
+  chosen_aoi_col = "chosen_aoi"        # combined with `layout` allows computing per-AOI dwell time
 )
-
-print(gc_data)
 ```
 
-## Results Visualisation
+Note the message about time unit conversion. `{mathpsychr}`'s response function fits downstream all assume seconds, so if `process()` detects an implausibly large `window` (> 30), it assumes milliseconds and rescales automatically.
 
-```{r cascade-plot, fig.width=7.0, fig.height=4.4}
+Printing the object shows two key changes compared to its `eyelink_data` predecessor. The `$derivatives` slot is now populated by a four-column tibble containing `average_prop_chosen` per time bin per recording, and its class has changed from `mpr_eyelink_eyetracking` to `mpr_gaze_cascade`. This class change forms a prerequisite for the `plot()` and `compute()` methods that follow.
+
+```{r cascade-data}
+gc_data
+```
+
+Finally, `window` and `n_bins` are stored as attributes on the object, so later steps do not need to repeat them, making the `process()` step one of the most consequential in the whole pipeline:
+
+```{r cascade-attributes}
+attr(gc_data$derivatives, "window")
+attr(gc_data$derivatives, "n_bins")
+```
+
+## Results visualisation
+
+The gaze cascade machinery in `{mathpsychr}` is a visualisation and exploration tool, not a statistical modelling one.^[For formal inference you should build your own theory-driven models.] Nonetheless, you can `plot()` the data several ways and `compute()` basic curve fits on the average.
+
+The simplest view shows participant (cluster)-level curves (grey spaghetti) overlaid by the empirical grand average:
+
+```{r cascade-plot-grand-average, fig.width=7.0, fig.height=4.4}
 plot(gc_data, fit_type = "none") +
   ggplot2::theme(legend.position = "bottom")
+```
+
+By default, `plot.mpr_gaze_cascade()` overlays both the grand average and a sigmoid fit. Here the two agree closely, especially near the response:
+
+```{r cascade-plot-default, fig.width=7.0, fig.height=4.4}
 plot(gc_data, fit_type = "sigmoid") +
   ggplot2::theme(legend.position = "bottom")
+```
+
+Finally, a piecewise-linear fit (flat line, then a single break) can be added too. In this display, we also drop the participant spaghetti to make it easier to see that both the sigmoid and piecewise fits track the empirical average well, comprising a solid evidence for the gaze cascade effect:
+
+```{r cascade-plot-all, fig.width=7.0, fig.height=4.4}
 plot(gc_data, fit_type = "both", show_clusters = FALSE) +
   ggplot2::theme(legend.position = "bottom")
 ```
 
+The overall curve is a good sanity check, but the more interesting question is usually whether it differs across stimulus or participant clusters. Next, we process and plot gaze cascade curves stratified by the categorical decision difficulty/agreement rate of the **Triplet Viewing** triplets.
+
 ---
 
-## Group by Clusters
+## Group by clusters
+
+As you have already seen, `eyelink_data`'s timings are in milliseconds, but the cascade fits expect seconds. Normally one would re-scale back at the building step and reassemble `eyelink_data`. Here, for demonstration purposes, we transform it in place instead. Note that this shortcut is generally **discouraged**, since it bypasses `build_eyelink_eyetracking()`'s validity checks.x
+
+```{r cascade-scaling-grouped}
+eyelink_data$fixations <- dplyr::mutate(
+  eyelink_data$fixations,
+  dplyr::across(c("stime", "etime"), \(x) x * 1e-3)
+)
+
+eyelink_data$responses <- dplyr::mutate(
+  eyelink_data$responses,
+  response_time = response_time / 1e3
+)
+```
+
+For the grouped analysis, we stratify by `difficulty_bin`, which splits triplets into three agreement-rate tiers:
+
+* **Low** (50-65%] agreement, *N~Low~* = `r eyelink_data$responses |> dplyr::filter(difficulty_bin == "Low (50-65%]") |> dplyr::distinct(tid) |> nrow()`
+* **Medium** (65-85%] agreement, *N~Medium~* = `r eyelink_data$responses |> dplyr::filter(difficulty_bin == "Medium (65-85%]") |> dplyr::distinct(tid) |> nrow()`
+* **High** (85-100%] agreement, *N~High~* = `r eyelink_data$responses |> dplyr::filter(difficulty_bin == "High (85-100%]") |> dplyr::distinct(tid) |> nrow()`
 
 ```{r cascade-processing-grouped}
 gc_grouped_data <- process(
   eyelink_data,
   type = "cascade",
   trial_vars = c("block", "trial"),
-  grp_vars = "difficulty_bin",    # NEW grouping variable
-  window = 3500,
+  grp_vars = "difficulty_bin",     # NEW grouping variable
+  window = 3.5,
   n_bins = 105L,
   response_time_col = "response_time",
   chosen_aoi_col = "chosen_aoi"
 )
-
-print(gc_grouped_data, n = 10L)
 ```
+
+`gc_grouped_data` has more rows than `gc_data` and an extra `difficulty_bin` column, which is also stored as a grouping variable for downstream use:
+
+```{r cascade-data-grouped}
+print(gc_grouped_data, n = 13L)
+attr(gc_grouped_data$derivatives, "window")
+attr(gc_grouped_data$derivatives, "n_bins")
+attr(gc_grouped_data$derivatives, "grp_vars")
+```
+
+`plot()`ing follows the same pattern as before, but now depends on exactly which fit(s) you ask for. Requesting a single fit type facets by the grouping variable, optionally with cluster-level spaghetti:
 
 ```{r cascade-plot-grouped, fig.width=7.0, fig.height=4}
 plot(gc_grouped_data, fit_type = "none") +
   ggplot2::theme(legend.position = "none")
 plot(gc_grouped_data, fit_type = "sigmoid", show_grand_avg = FALSE) +
   ggplot2::theme(legend.position = "bottom")
-plot(gc_grouped_data, fit_type = "piecewise", show_grand_avg = FALSE) +
+plot(gc_grouped_data, fit_type = "piecewise", show_grand_avg = FALSE, show_clusters = FALSE) +
   ggplot2::theme(legend.position = "bottom")
 ```
+
+Requesting more than one fit type instead facets by fit (grand average vs. sigmoid vs. piecewise), colour-coding the grouping variable within each panel.^[A future `{mathpsychr}` release may let you choose which of these two factors facets and which colours.] Cluster-level spaghetti is always dropped here to avoid clutter:
 
 ```{r cascade-plot-faceted, fig.width=7.0, fig.height=4}
 plot(gc_grouped_data, fit_type = "both")
 ```
+
+One catch of these faceted plots is that, because they are composed by `{patchwork}`, appending `{ggplot2}` layers affects the last panel only:
 
 ```{r cascade-plot-faceted-failure, fig.width=7.0, fig.height=4}
 plot(gc_grouped_data, fit_type = "both") +
@@ -345,6 +417,8 @@ plot(gc_grouped_data, fit_type = "both") +
 ```
 
 ## Statistical Comparisons
+
+Visually, the gaze cascade curves look similar across difficulty bins in this dataset, with the inflection point and upper asymptote almost identical between groups. The one candidate difference is the lower asymptote/baseline, whith high-agreement items showing a bit more early preference for the eventually chosen image, even well before the response. However, their fit (R^2^) is also noticeably worse than for low/medium agreement items. To put a number on how "(dis)similar" the baselines are, we bootstrap the sigmoid and piecewise-linear parameters and compare them across groups^[Bootstrapping is currently done at the recording/participant level.] via `compute()`:
 
 ```{r cascade-bootstrap, cache=TRUE}
 gc_bootstrap <- compute(
@@ -355,6 +429,8 @@ gc_bootstrap <- compute(
   seed = 1
 )
 ```
+
+The bootstrap results print as tidy `{gt}` tables. Parameter estimates or between-group differences can be printed alongside their uncertainty intervals. Here, they lend some support to the baseline-level pattern noted above, that high agreement triplets exhibit higher baseline to-be-chosen image fixation preference than low/medium agreement ones.^[The sigmoid's lower asymptote behaviour apparent it its 95% CI estimates deserves its own discussion in a future `{mathpsychr}` write-up. Nonetheless, it does not change the conclusions of this exploratory pass.]
 
 ```{r cascade-bootstrap-tabs}
 as_gt(gc_bootstrap, type = "estimates")
