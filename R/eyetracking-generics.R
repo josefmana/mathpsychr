@@ -86,7 +86,7 @@
 #'   `"mpr_et_indexes"` when `type = "indexes"`, or
 #'   `"mpr_gaze_cascade"` when `type = "cascade"`.
 #'
-#' @seealso [eyelink_eyetracking()], [plot.mpr_gaze_cascade()]
+#' @seealso [build_eyelink_eyetracking()], [plot.mpr_gaze_cascade()]
 #'
 #' @export
 process <- function(x, ...) {

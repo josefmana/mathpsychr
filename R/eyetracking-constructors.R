@@ -136,7 +136,7 @@ mpr_eyelink_eyetracking <- function(
 #'   h   = 250
 #' )
 #'
-#' obj <- eyelink_eyetracking(
+#' obj <- build_eyelink_eyetracking(
 #'   fixations = raw$fixations,
 #'   metadata  = raw$meta_data,
 #'   responses = raw$response_data,
@@ -147,7 +147,7 @@ mpr_eyelink_eyetracking <- function(
 #' }
 #'
 #' @export
-eyelink_eyetracking <- function(
+build_eyelink_eyetracking <- function(
     fixations,
     layout,
     metadata = NULL,

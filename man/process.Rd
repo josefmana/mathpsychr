@@ -130,5 +130,5 @@ to the class vector. Existing derivatives are silently overwritten.
 
 }}
 \seealso{
-\code{\link[=eyelink_eyetracking]{eyelink_eyetracking()}}, \code{\link[=plot.mpr_gaze_cascade]{plot.mpr_gaze_cascade()}}
+\code{\link[=build_eyelink_eyetracking]{build_eyelink_eyetracking()}}, \code{\link[=plot.mpr_gaze_cascade]{plot.mpr_gaze_cascade()}}
 }
