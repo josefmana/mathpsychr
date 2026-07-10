@@ -63,17 +63,36 @@ values:
 \item{\code{"dwell_time_mean"}}{Mean fixation duration on the AOI.}
 \item{\code{"dwell_time_median"}}{Median fixation duration on the AOI.}
 \item{\code{"dwell_time_sd"}}{SD of fixation duration on the AOI.}
-\item{\code{"switches_total"}}{Number of AOI switches across the trial.}
+\item{\code{"switches_direct"}}{Number of AOI switches across the trial. Only
+direct AOI \u2192 AOI movements are included.}
+\item{\code{"switches_total"}}{Number of AOI switches across the trial. AOI
+\u2192 blank space \u2192 AOI movements are included.}
 \item{\code{"revisits_count"}}{Return visits to the AOI after first
-departing.}
+departing. A revisit may come from AOI or a blank space.}
 \item{\code{"transitions_ref_to_ref"}}{Gaze shifts between the two
-reference AOIs. Requires \code{query_aoi} and \code{reference_aois}.}
+reference AOIs. Requires \code{query_aoi} and \code{reference_aois}. Includes
+paths with interim blank space fixations.}
+\item{\code{"direct_transitions_ref_to_ref"}}{Gaze shifts between the two
+reference AOIs. Requires \code{query_aoi} and \code{reference_aois}. Blank space
+fixations are discounted.}
 \item{\code{"transitions_query_refs"}}{Gaze shifts between the query and
-any reference AOI. Requires \code{query_aoi} and \code{reference_aois}.}
+any reference AOI. Requires \code{query_aoi} and \code{reference_aois}. Includes
+paths with interim blank space fixations.}
+\item{\code{"direct_transitions_query_refs"}}{Gaze shifts between the query
+and any reference AOI. Requires \code{query_aoi} and \code{reference_aois}.
+Blank space fixations are discounted.}
 \item{\code{"transitions_query_ref1"}}{Gaze shifts between the query and
-\code{reference_aois[1]}. Requires \code{query_aoi} and \code{reference_aois}.}
+\code{reference_aois[1]}. Requires \code{query_aoi} and \code{reference_aois}.
+Includes paths with interim blank space fixations.}
+\item{\code{"direct_transitions_query_ref1"}}{Gaze shifts between the query
+and \code{reference_aois[1]}. Requires \code{query_aoi} and \code{reference_aois}.
+Blank space fixations are discounted.}
 \item{\code{"transitions_query_ref2"}}{Gaze shifts between the query and
-\code{reference_aois[2]}. Requires \code{query_aoi} and \code{reference_aois}.}
+\code{reference_aois[2]}. Requires \code{query_aoi} and \code{reference_aois}.
+Includes paths with interim blank space fixations.}
+\item{\code{"direct_transitions_query_ref2"}}{Gaze shifts between the query
+and \code{reference_aois[2]}. Requires \code{query_aoi} and \code{reference_aois}.
+Blank space fixations are discounted.}
 \item{\code{"first_fixation_start"}}{Time of the first fixation on the AOI.}
 \item{\code{"first_reference_fixation_start"}}{Time of the first fixation on
 any reference AOI. Requires \code{reference_aois}.}

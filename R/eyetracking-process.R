@@ -11,12 +11,17 @@
   "dwell_time_mean",
   "dwell_time_median",
   "dwell_time_sd",
+  "switches_direct",
   "switches_total",
   "revisits_count",
   "transitions_ref_to_ref",
+  "direct_transitions_ref_to_ref",
   "transitions_query_refs",
+  "direct_transitions_query_refs",
   "transitions_query_ref1",
+  "direct_transitions_query_ref1",
   "transitions_query_ref2",
+  "direct_transitions_query_ref2",
   "first_fixation_start",
   "first_reference_fixation_start",
   "first_fixated_aoi",
@@ -29,7 +34,7 @@
 )
 
 # Transition statistics that require `query_aoi` and `reference_aois`
-.transition_et_stats <- c(
+.transitions_et_stats <- c(
   "transitions_ref_to_ref",
   "transitions_query_refs",
   "transitions_query_ref1",
@@ -159,7 +164,7 @@
     ))
   }
 
-  requested_transitions <- intersect(stats, .transition_et_stats)
+  requested_transitions <- intersect(stats, .transitions_et_stats)
   if (length(requested_transitions) > 0L) {
     if (is.null(query_aoi) || is.null(reference_aois)) {
       cli::cli_abort(c(
@@ -276,9 +281,17 @@
     dplyr::filter(.data$aoi != "blank")
 
   # --- Switch / transition counts (per group) ---------------------------------
-  count_switches <- function(aoi) {
+  count_switches <- function(aoi, na.rm = FALSE) {
+    if (na.rm) aoi <- aoi[complete.cases(aoi)]
     prev <- dplyr::lag(aoi)
     sum(!is.na(aoi) & !is.na(prev) & aoi != prev)
+  }
+
+  count_transitions <- function(aoi, stim1, stim2, na.rm = FALSE) {
+    if (na.rm) aoi <- aoi[complete.cases(aoi)]
+    prev <- dplyr::lag(aoi)
+    trans <- ((aoi %in% stim1 & prev %in% stim2) | (aoi %in% stim2 & prev %in% stim1)) & aoi != prev
+    sum(trans, na.rm = TRUE)
   }
 
   group_stats <-
@@ -287,41 +300,57 @@
       dplyr::across(tidyselect::all_of(grp_full))
     ) |>
     dplyr::summarise(
-      switches_total = count_switches(.data$aoi),
+      switches_direct = count_switches(.data$aoi),
+      switches_total = count_switches(.data$aoi, na.rm = TRUE),
       watch_time = max(.data$etime),
-      transitions_ref_to_ref = {
-        prev <- dplyr::lag(.data$aoi)
-        sum(
-          .data$aoi %in% reference_aois &
-            prev %in% reference_aois &
-            .data$aoi != prev,
-          na.rm = TRUE
-        )
-      },
-      transitions_query_refs = {
-        prev <- dplyr::lag(.data$aoi)
-        sum(
-          (.data$aoi == query_aoi & prev %in% reference_aois) |
-            (.data$aoi %in% reference_aois & prev == query_aoi),
-          na.rm = TRUE
-        )
-      },
-      transitions_query_ref1 = {
-        prev <- dplyr::lag(.data$aoi)
-        sum(
-          (.data$aoi == query_aoi & prev == reference_aois[1L]) |
-            (.data$aoi == reference_aois[1L] & prev == query_aoi),
-          na.rm = TRUE
-        )
-      },
-      transitions_query_ref2 = {
-        prev <- dplyr::lag(.data$aoi)
-        sum(
-          (.data$aoi == query_aoi & prev == reference_aois[2L]) |
-            (.data$aoi == reference_aois[2L] & prev == query_aoi),
-          na.rm = TRUE
-        )
-      },
+      transitions_ref_to_ref = count_transitions(
+        .data$aoi,
+        reference_aois[1L],
+        reference_aois[2L],
+        na.rm = TRUE
+      ),
+      direct_transitions_ref_to_ref = count_transitions(
+        .data$aoi,
+        reference_aois[1L],
+        reference_aois[2L],
+        na.rm = FALSE
+      ),
+      transitions_query_refs = count_transitions(
+        .data$aoi,
+        query_aoi,
+        reference_aois,
+        na.rm = TRUE
+      ),
+      direct_transitions_query_refs = count_transitions(
+        .data$aoi,
+        query_aoi,
+        reference_aois,
+        na.rm = FALSE
+      ),
+      transitions_query_ref1 = count_transitions(
+        .data$aoi,
+        query_aoi,
+        reference_aois[1L],
+        na.rm = TRUE
+      ),
+      direct_transitions_query_ref1 = count_transitions(
+        .data$aoi,
+        query_aoi,
+        reference_aois[1L],
+        na.rm = FALSE
+      ),
+      transitions_query_ref2 = count_transitions(
+        .data$aoi,
+        query_aoi,
+        reference_aois[2L],
+        na.rm = TRUE
+      ),
+      direct_transitions_query_ref2 = count_transitions(
+        .data$aoi,
+        query_aoi,
+        reference_aois[2L],
+        na.rm = FALSE
+      ),
       .groups = "drop"
     )
 
