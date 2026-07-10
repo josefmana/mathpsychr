@@ -24,16 +24,18 @@
 #' @param grp_vars Character vector of additional grouping variable names
 #'   present in `x$fixations` (and in `x$responses` when
 #'   `type = "cascade"`), or `NULL` (default) for no extra grouping beyond
-#'   the identifier column.
+#'   the identifier column. When `type = "indexes"`, `trial_vars` will be
+#'   automatically appended to `grp_vars`, because indexes computation must
+#'   be stratified by trials for it to be valid.
 #' @param stats Character vector of statistics to compute. Only used when
 #'   `type = "indexes"`. Defaults to `c("fix_count", "dwell_total")`. Valid
 #'   values:
 #'   \describe{
-#'     \item{`"fix_count"`}{Total number of fixations on the AOI.}
-#'     \item{`"dwell_total"`}{Total dwell time on the AOI.}
-#'     \item{`"dwell_mean"`}{Mean fixation duration on the AOI.}
-#'     \item{`"dwell_median"`}{Median fixation duration on the AOI.}
-#'     \item{`"dwell_sd"`}{SD of fixation duration on the AOI.}
+#'     \item{`"fixation_count"`}{Total number of fixations on the AOI.}
+#'     \item{`"dwell_time_total"`}{Total dwell time on the AOI.}
+#'     \item{`"dwell_time_mean"`}{Mean fixation duration on the AOI.}
+#'     \item{`"dwell_time_median"`}{Median fixation duration on the AOI.}
+#'     \item{`"dwell_time_sd"`}{SD of fixation duration on the AOI.}
 #'     \item{`"switches_total"`}{Number of AOI switches across the trial.}
 #'     \item{`"revisits_count"`}{Return visits to the AOI after first
 #'       departing.}
@@ -45,11 +47,20 @@
 #'       `reference_aois[1]`. Requires `query_aoi` and `reference_aois`.}
 #'     \item{`"transitions_query_ref2"`}{Gaze shifts between the query and
 #'       `reference_aois[2]`. Requires `query_aoi` and `reference_aois`.}
-#'     \item{`"first_fix_start"`}{Time of the first fixation on the AOI.}
-#'     \item{`"first_reference_fix_start"`}{Time of the first fixation on
+#'     \item{`"first_fixation_start"`}{Time of the first fixation on the AOI.}
+#'     \item{`"first_reference_fixation_start"`}{Time of the first fixation on
 #'       any reference AOI. Requires `reference_aois`.}
-#'     \item{`"last_fix_end"`}{Time when the last fixation on the AOI
+#'     \item{`"first_fixated_aoi"`}{Identity of the AOI that was fixated first.}
+#'     \item{`"first_fixated_reference"`}{Identity of the reference AOI that
+#'       was fixated first. Requires `reference_aois`.}
+#'     \item{`"last_fixation_end"`}{Time when the last fixation on the AOI
 #'       ended.}
+#'     \item{`"last_reference_fixation_end"`}{Time when the last fixation on
+#'       any reference AOI ended. Requires `reference_aois`.}
+#'     \item{`"last_fixated_aoi"`}{Identity of the AOI that was fixated as the
+#'       last.}
+#'     \item{`"last_fixated_reference"`}{Identity of the reference AOI that
+#'       was fixated last. Requires `reference_aois`.}
 #'     \item{`"watch_time"`}{Cumulative time until the end of the last
 #'       fixation in the observation window.}
 #'   }
@@ -65,11 +76,10 @@
 #'   `x$layout$aoi`. Required for all `transitions_*` statistics when
 #'   `type = "indexes"`. Defaults to `NULL`.
 #' @param reference_aois Character(2). Labels of the two reference AOIs in
-#'   `x$layout$aoi`. Required for `transitions_*` statistics and
-#'   `"first_reference_fix_start"` when `type = "indexes"`. For
-#'   `type = "cascade"`, reference AOIs are derived automatically from the
-#'   unique non-`NA` values of `chosen_aoi_col` in `x$responses`. Defaults
-#'   to `NULL`.
+#'   `x$layout$aoi`. Required for `transitions_*` and `*_reference_*` statistics
+#'   when `type = "indexes"`. For `type = "cascade"`, reference AOIs are derived
+#'   automatically from the unique non-`NA` values of `chosen_aoi_col` in
+#'   `x$responses`. Defaults to `NULL`.
 #' @param n_bins Integer(1). Number of equal-width time bins spanning
 #'   `[-window, 0]`. Only used when `type = "cascade"`. Defaults to `100L`.
 #' @param response_time_col Character(1). Name of the response time column

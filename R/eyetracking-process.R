@@ -6,20 +6,25 @@
 
 # Valid eye-tracking statistics
 .valid_et_stats <- c(
-  "fix_count",
-  "dwell_total",
-  "dwell_mean",
-  "dwell_median",
-  "dwell_sd",
+  "fixation_count",
+  "dwell_time_total",
+  "dwell_time_mean",
+  "dwell_time_median",
+  "dwell_time_sd",
   "switches_total",
   "revisits_count",
   "transitions_ref_to_ref",
   "transitions_query_refs",
   "transitions_query_ref1",
   "transitions_query_ref2",
-  "first_fix_start",
-  "first_reference_fix_start",
-  "last_fix_end",
+  "first_fixation_start",
+  "first_reference_fixation_start",
+  "first_fixated_aoi",
+  "first_fixated_reference",
+  "last_fixation_end",
+  "last_reference_fixation_end",
+  "last_fixated_aoi",
+  "last_fixated_reference",
   "watch_time"
 )
 
@@ -31,16 +36,24 @@
   "transitions_query_ref2"
 )
 
+# Reference-related statistics that require `reference_aois`
+.reference_et_stats <- c(
+  "first_reference_fixation_start",
+  "first_fixated_reference",
+  "last_reference_fixation_end",
+  "last_fixated_reference"
+)
+
 # Structural fills for eye tracking statistics
 .et_index_fills <- list(
-  fix_count              = 0L,
+  fixation_count         = 0L,
   revisits_count         = 0L,
   switches_total         = 0L,
   transitions_ref_to_ref = 0L,
   transitions_query_refs = 0L,
   transitions_query_ref1 = 0L,
   transitions_query_ref2 = 0L,
-  dwell_total            = 0
+  dwell_time_total       = 0
 )
 
 
@@ -111,14 +124,18 @@
 #' selected eye-tracking statistics per user-specified groups of observations.
 #'
 #' @param x An `mpr_eyelink_eyetracking` object.
+#' @param trial_vars Character vector of variables denoting a unique trial
+#'   identification. These variables need to be present in both `x$fixations`
+#'   and `x$responses`
 #' @param grp_vars Character vector of grouping variable names, or `NULL`.
+#'   Needs to include
 #' @param stats Character vector of statistics to compute; validated against
 #'   `.valid_et_stats`.
 #' @param window Numeric. Upper bound on fixation `etime`; `Inf` keeps all.
 #' @param query_aoi Character(1). Label of the query AOI, or `NULL`. Required
 #'   only for `transitions_*` statistics.
 #' @param reference_aois Character(2) labels of the reference AOIs, or `NULL`.
-#'   Required only for `transitions_*` statistics.
+#'   Required for `transitions_*` and `*_reference_*` statistics .
 #'
 #' @returns A data.frame with one row per identifier x `grp_vars` x `aoi`
 #'   combination and one column per requested statistic.
@@ -126,6 +143,7 @@
 #' @noRd
 .process_et_indexes <- function(
     x,
+    trial_vars,
     grp_vars,
     stats,
     window,
@@ -133,31 +151,73 @@
     reference_aois
 ) {
   # --- Validate requested statistics ------------------------------------------
-  unknown_stats <- setdiff(stats, .valid_et_stats)
+  unknown_stats <- setdiff(stats, c(.valid_et_stats, "all"))
   if (length(unknown_stats) > 0L) {
     cli::cli_abort(c(
             "Unknown statistic{?s} requested in `stats`: {.val {unknown_stats}}.",
-      "i" = "Valid statistics are: {.val {get(.valid_et_stats)}}."
+      "i" = "Valid statistics are: {.val {(.valid_et_stats)}}."
     ))
   }
 
   requested_transitions <- intersect(stats, .transition_et_stats)
-  if (length(requested_transitions) > 0L &&
-      (is.null(query_aoi) || is.null(reference_aois))) {
-    cli::cli_abort(c(
-            "Transition statistics require both `query_aoi` and `reference_aois`.",
-      "x" = "Requested transition stat{?s}: {.val {requested_transitions}}.",
-      "i" = "Supply the `query_aoi` and both `reference_aois`."
-    ))
+  if (length(requested_transitions) > 0L) {
+    if (is.null(query_aoi) || is.null(reference_aois)) {
+      cli::cli_abort(c(
+              "Transition statistics require both `query_aoi` and `reference_aois`.",
+        "x" = "Requested transition stat{?s}: {.val {requested_transitions}}.",
+        "i" = "Supply the `query_aoi` and both `reference_aois`."
+      ))
+    }
+    if (!all(c(query_aoi, reference_aois) %in% x$layout$aoi)) {
+      cli::cli_abort(c(
+              "`query_aoi` and both `reference_aois` must be present in `x$layout$aoi`.",
+        "i" = "Supplied `query_aoi`: {.val {query_aoi}}.",
+        "i" = "Supplied `reference_aois`: {.val {reference_aois}}.",
+        "i" = "Supplied `x$layout$aoi`: {.val {x$layout$aoi}}."
+      ))
+    }
   }
 
-  if ("first_reference_fix_start" %in% stats && is.null(reference_aois)) {
-    cli::cli_warn(c(
-      "!" = "`first_reference_fix_start` was requested without `reference_aois`; values are `NA`."
-    ))
+  requested_reference_stats <- intersect(stats, .reference_et_stats)
+  if (length(requested_reference_stats) > 0L) {
+    if (is.null(reference_aois)) {
+      cli::cli_abort(c(
+              "Reference image-related statistics require `reference_aois`.",
+        "x" = "Requested reference-related stat{?s}: {.val {requested_reference_stats}}.",
+        "i" = "Supply the `reference_aois`."
+      ))
+    }
+    if (!all(reference_aois %in% x$layout$aoi)) {
+      cli::cli_abort(c(
+              "Both `reference_aois` must be present in `x$layout$aoi`.",
+        "i" = "Supplied `reference_aois`: {.val {reference_aois}}.",
+        "i" = "Supplied `x$layout$aoi`: {.val {x$layout$aoi}}."
+      ))
+    }
+  }
+
+  # --- Fill-in statistics -----------------------------------------------------
+  if (length(stats) < 2L) {
+    if (is.null(stats) || stats == "all") {
+      stats_display <- if (is.null(stats)) "NULL" else stats
+      cli::cli_inform(c(
+        "i" = "`stats` set to {.val {stats_display}} \u2192 all available statistics will be computed.",
+        "i" = "Computing all of {.val {(.valid_et_stats)}}."
+      ))
+      stats <- .valid_et_stats
+    }
   }
 
   # --- Grouping structure -----------------------------------------------------
+  missing_trial_cols <- setdiff(trial_vars, grp_vars)
+  if (length(missing_trial_cols) > 0L) {
+    cli::cli_inform(c(
+      "i" = "`grp_vars` need to contain `trial_vars` varaibles for valid trial-wise indexes computation.",
+      "i" = "Appending {.val {missing_trial_cols}} to `grp_vars`."
+    ))
+    grp_vars <- c(grp_vars, missing_trial_cols)
+  }
+
   id_cols  <- names(x$fixations)[endsWith(names(x$fixations), "_id")]
   grp_full <- unique(c(id_cols, grp_vars))
 
@@ -182,7 +242,7 @@
     annotated <- dplyr::left_join(
       annotated,
       x$responses,
-      by = join_by_id,
+      by = c(join_by_id, trial_vars),
       relationship = "many-to-one"
     )
   }
@@ -229,14 +289,6 @@
     dplyr::summarise(
       switches_total = count_switches(.data$aoi),
       watch_time = max(.data$etime),
-      first_reference_fix_start = {
-        ref_times <- .data$stime[.data$aoi %in% reference_aois]
-        if (length(ref_times) == 0L) {
-          NA_real_
-        } else {
-          min(ref_times)
-        }
-      },
       transitions_ref_to_ref = {
         prev <- dplyr::lag(.data$aoi)
         sum(
@@ -273,6 +325,46 @@
       .groups = "drop"
     )
 
+  # --- Reference-specific statistics ------------------------------------------
+  ref_stats <-
+    annotated |>
+    dplyr::group_by(
+      dplyr::across(tidyselect::all_of(grp_full))
+    ) |>
+    dplyr::summarise(
+      first_reference_fixation_start = {
+        ref_times <- .data$stime[.data$aoi %in% reference_aois]
+        if (length(ref_times) == 0L) {
+          NA_real_
+        } else {
+          min(ref_times)
+        }
+      },
+      first_fixated_reference = {
+        if (is.na(.data$first_reference_fixation_start)) {
+          NA_character_
+        } else {
+          .data$aoi[.data$stime == .data$first_reference_fixation_start]
+        }
+      },
+      last_reference_fixation_end = {
+        ref_times <- .data$etime[.data$aoi %in% reference_aois]
+        if (length(ref_times) == 0L) {
+          NA_real_
+        } else {
+          max(ref_times)
+        }
+      },
+      last_fixated_reference = {
+        if (is.na(.data$last_reference_fixation_end)) {
+          NA_character_
+        } else {
+          .data$aoi[.data$etime == .data$last_reference_fixation_end]
+        }
+      },
+      .groups = "drop"
+    )
+
   # --- Per-AOI dwell statistics (per group x AOI) -----------------------------
   aoi_stats <-
     annotated |>
@@ -281,28 +373,49 @@
       dplyr::across(tidyselect::all_of(c(grp_full, "aoi")))
     ) |>
     dplyr::summarise(
-      fix_count = dplyr::n(),
-      dwell_total = sum(.data$dur),
-      dwell_mean = mean(.data$dur),
-      dwell_median = stats::median(.data$dur),
-      dwell_sd = stats::sd(.data$dur),
-      first_fix_start = {
+      fixation_count = dplyr::n(),
+      dwell_time_total = sum(.data$dur),
+      dwell_time_mean = mean(.data$dur),
+      dwell_time_median = stats::median(.data$dur),
+      dwell_time_sd = stats::sd(.data$dur),
+      first_fixation_start = {
         if (length(.data$stime) == 0L) {
           NA_real_
         } else {
           max(0, min(.data$stime))
         }
       },
-      last_fix_end = max(.data$etime),
+      last_fixation_end = max(.data$etime),
       .groups = "drop"
-    )
+    ) |>
+    tidyr::complete(!!!rlang::syms(c(grp_full, "aoi"))) |>
+    dplyr::group_by(
+      dplyr::across(tidyselect::all_of(grp_full))
+    ) |>
+    dplyr::mutate(
+      first_fixated_aoi = {
+        if (all(is.na(.data$first_fixation_start))) {
+          NA_character_
+        } else {
+          dplyr::first(.data$aoi[which.min(.data$first_fixation_start)])
+        }
+      },
+      last_fixated_aoi = {
+        if (all(is.na(.data$last_fixation_end))) {
+          NA_character_
+        } else {
+          dplyr::last(.data$aoi[which.max(.data$last_fixation_end)])
+        }
+      }
+    ) |>
+    dplyr::ungroup()
 
   # --- Assemble structural zeros and join -------------------------------------
   combined <-
     aoi_stats |>
-    tidyr::complete(!!!rlang::syms(c(grp_full, "aoi"))) |>
     dplyr::left_join(revisits, by = c(grp_full, "aoi")) |>
     dplyr::left_join(group_stats, by = grp_full) |>
+    dplyr::left_join(ref_stats, by = grp_full) |>
     dplyr::mutate(
       dplyr::across(
         tidyselect::any_of(names(.et_index_fills)),
@@ -338,7 +451,7 @@
 #' @param x An `mpr_eyelink_eyetracking` object; `x$responses` must not be
 #'   `NULL`.
 #' @param trial_vars Character vector of variables denoting a unique trial
-#'   identification. These variables need to be present in bot `x$fixations`
+#'   identification. These variables need to be present in both `x$fixations`
 #'   and `x$responses`
 #' @param grp_vars Character vector of grouping variable names, or `NULL`.
 #' @param n_bins Integer(1). Number of equal-width time bins.
@@ -390,12 +503,11 @@
   if (length(fixations_missing_trial_cols) > 0L) {
     cli::cli_abort(c(
             "`trial_cols` must be present in `x$fixations`.",
-      "`trial_cols` must be present in `x$fixations`.",
       "x" = "The following column{?} {?is/are} missing: {.var {fixations_missing_trial_cols}}."
     ))
   }
 
-  # --- Time unit detection (ms -> s) ------------------------------------------
+  # --- Time unit detection ----------------------------------------------------
   if (window > 30) {
     cli::cli_inform(c(
       "!" = "`window = {window}` looks like milliseconds (threshold: > 30).",
@@ -524,9 +636,6 @@
       .groups = "drop"
     )
 
-  # Stamp window/n_bins/grp_vars so that plot.mpr_gaze_cascade can
-  # reconstruct the time axis and grouping without requiring the user to
-  # re-supply these arguments.
   attr(output, "window")   <- window
   attr(output, "n_bins")   <- n_bins
   attr(output, "grp_vars") <- grp_vars
@@ -538,29 +647,29 @@
 #' @export
 process.mpr_eyelink_eyetracking <- function(
     x,
-    type              = c("indexes", "cascade"),
-    trial_vars        = "trial_index",
-    grp_vars          = NULL,
-    stats             = c("fix_count", "dwell_total"),
-    window            = Inf,
-    query_aoi         = NULL,
-    reference_aois    = NULL,
-    n_bins            = 100L,
+    type = c("indexes", "cascade"),
+    trial_vars = "trial_index",
+    grp_vars = NULL,
+    stats = c("fix_count", "dwell_total"),
+    window = Inf,
+    query_aoi = NULL,
+    reference_aois = NULL,
+    n_bins = 100L,
     response_time_col = "response_time",
-    chosen_aoi_col    = "chosen_aoi",
+    chosen_aoi_col = "chosen_aoi",
     ...
 ) {
   # --- Validate `type` --------------------------------------------------------
   type <- match.arg(type)
   if (missing(type)) {
     cli::cli_abort(c(
-      "`type` is required and has no default.",
-      "i" = "Choose one of {.val {get(.valid_process_types)}}."
+            "`type` is required and has no default.",
+      "i" = "Choose one of {.val {(.valid_process_types)}}."
     ))
   }
   if (!rlang::is_string(type) || !type %in% .valid_process_types) {
     cli::cli_abort(c(
-      "`type` must be one of {.val {get(.valid_process_types)}}.",
+            "`type` must be one of {.val {(.valid_process_types)}}.",
       "x" = "Received {.val {type}}."
     ))
   }
@@ -589,7 +698,7 @@ process.mpr_eyelink_eyetracking <- function(
   x$derivatives <- switch(
     type,
     indexes = .process_et_indexes(
-      x, grp_vars, stats, window, query_aoi, reference_aois
+      x, trial_vars, grp_vars, stats, window, query_aoi, reference_aois
     ),
     cascade = .process_gaze_cascade(
       x, trial_vars, grp_vars, n_bins, window, response_time_col, chosen_aoi_col
