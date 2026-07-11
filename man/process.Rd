@@ -12,7 +12,7 @@ process(x, ...)
 
 \method{process}{mpr_eyelink_eyetracking}(
   x,
-  type = c("indexes", "cascade"),
+  type = c("measures", "cascade"),
   trial_vars = "trial_index",
   grp_vars = NULL,
   stats = c("fix_count", "dwell_total"),
@@ -30,9 +30,9 @@ process(x, ...)
 
 \item{...}{Currently unused.}
 
-\item{type}{Character(1). Analysis type: \code{"indexes"} or \code{"cascade"}.
+\item{type}{Character(1). Analysis type: \code{"measures"} or \code{"cascade"}.
 
-\code{"indexes"} computes trial-level grouped eye-tracking statistics and
+\code{"measures"} computes trial-level grouped eye-tracking statistics and
 returns one row per identifier × \code{grp_vars} × AOI combination. The
 \code{stats}, \code{window}, \code{query_aoi}, and \code{reference_aois} arguments apply.
 
@@ -50,12 +50,12 @@ present in \code{x$fixations} and in \code{x$responses}.}
 \item{grp_vars}{Character vector of additional grouping variable names
 present in \code{x$fixations} (and in \code{x$responses} when
 \code{type = "cascade"}), or \code{NULL} (default) for no extra grouping beyond
-the identifier column. When \code{type = "indexes"}, \code{trial_vars} will be
-automatically appended to \code{grp_vars}, because indexes computation must
-be stratified by trials for it to be valid.}
+the identifier column. When \code{type = "measures"}, \code{trial_vars} will be
+automatically appended to \code{grp_vars} before processing, because measures
+computation must be stratified by trials for it to be valid.}
 
 \item{stats}{Character vector of statistics to compute. Only used when
-\code{type = "indexes"}. Defaults to \code{c("fix_count", "dwell_total")}. Valid
+\code{type = "measures"}. Defaults to \code{c("fix_count", "dwell_total")}. Valid
 values:
 \describe{
 \item{\code{"fixation_count"}}{Total number of fixations on the AOI.}
@@ -64,9 +64,9 @@ values:
 \item{\code{"dwell_time_median"}}{Median fixation duration on the AOI.}
 \item{\code{"dwell_time_sd"}}{SD of fixation duration on the AOI.}
 \item{\code{"switches_direct"}}{Number of AOI switches across the trial. Only
-direct AOI \u2192 AOI movements are included.}
+direct AOI to AOI movements are included.}
 \item{\code{"switches_total"}}{Number of AOI switches across the trial. AOI
-\u2192 blank space \u2192 AOI movements are included.}
+to blank space to AOI movements are included.}
 \item{\code{"revisits_count"}}{Return visits to the AOI after first
 departing. A revisit may come from AOI or a blank space.}
 \item{\code{"transitions_ref_to_ref"}}{Gaze shifts between the two
@@ -111,7 +111,7 @@ was fixated last. Requires \code{reference_aois}.}
 fixation in the observation window.}
 }}
 
-\item{window}{Numeric(1). When \code{type = "indexes"}: upper bound on
+\item{window}{Numeric(1). When \code{type = "measures"}: upper bound on
 fixation end time (\code{etime}); fixations with \code{etime >= window} are
 excluded, and a \verb{_<window>} suffix is appended to statistic column
 names. \code{Inf} (default) keeps all fixations. When \code{type = "cascade"}:
@@ -122,11 +122,11 @@ milliseconds are assumed and the value is automatically converted.}
 
 \item{query_aoi}{Character(1). Label of the query AOI in
 \code{x$layout$aoi}. Required for all \verb{transitions_*} statistics when
-\code{type = "indexes"}. Defaults to \code{NULL}.}
+\code{type = "measures"}. Defaults to \code{NULL}.}
 
 \item{reference_aois}{Character(2). Labels of the two reference AOIs in
 \code{x$layout$aoi}. Required for \verb{transitions_*} and \verb{*_reference_*} statistics
-when \code{type = "indexes"}. For \code{type = "cascade"}, reference AOIs are derived
+when \code{type = "measures"}. For \code{type = "cascade"}, reference AOIs are derived
 automatically from the unique non-\code{NA} values of \code{chosen_aoi_col} in
 \code{x$responses}. Defaults to \code{NULL}.}
 
@@ -145,7 +145,7 @@ Defaults to \code{"chosen_aoi"}.}
 \value{
 The same object with \verb{$derivatives} populated as a \code{data.frame}.
 The class vector is prepended with a result subclass:
-\code{"mpr_et_indexes"} when \code{type = "indexes"}, or
+\code{"mpr_et_measures"} when \code{type = "measures"}, or
 \code{"mpr_gaze_cascade"} when \code{type = "cascade"}.
 }
 \description{

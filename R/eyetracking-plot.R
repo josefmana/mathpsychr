@@ -631,7 +631,7 @@ plot.mpr_gaze_cascade <- function(
   # --- Preconditions ----------------------------------------------------------
   if (is.null(x$derivatives)) {
     cli::cli_abort(c(
-      "No derived data to plot.",
+            "No derived data to plot.",
       "i" = "Run `process(x, type = {.val cascade})` first."
     ))
   }
@@ -642,7 +642,7 @@ plot.mpr_gaze_cascade <- function(
 
   if (is.null(window) || is.null(n_bins)) {
     cli::cli_abort(c(
-      "`window` and `n_bins` attributes are missing from `x$derivatives`.",
+            "`window` and `n_bins` attributes are missing from `x$derivatives`.",
       "i" = "Re-run `process(x, type = {.val cascade})` to regenerate them."
     ))
   }
@@ -655,7 +655,7 @@ plot.mpr_gaze_cascade <- function(
     missing_group <- setdiff(colour_by, colnames(x$derivatives))
     if (length(missing_group) > 0L) {
       cli::cli_abort(c(
-        "`grp_vars` from `process()` not found in `x$derivatives`.",
+              "`grp_vars` from `process()` not found in `x$derivatives`.",
         "x" = "Missing: {.val {missing_group}}.",
         "i" = "Available columns: {.val {colnames(x$derivatives)}}.",
         "i" = "This shouldn't happen from normal use; `x$derivatives` may have been modified after `process()`."

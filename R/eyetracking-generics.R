@@ -5,9 +5,9 @@
 #' to the class vector. Existing derivatives are silently overwritten.
 #'
 #' @param x An `mpr_eyetracking` object.
-#' @param type Character(1). Analysis type: `"indexes"` or `"cascade"`.
+#' @param type Character(1). Analysis type: `"measures"` or `"cascade"`.
 #'
-#'   `"indexes"` computes trial-level grouped eye-tracking statistics and
+#'   `"measures"` computes trial-level grouped eye-tracking statistics and
 #'   returns one row per identifier × `grp_vars` × AOI combination. The
 #'   `stats`, `window`, `query_aoi`, and `reference_aois` arguments apply.
 #'
@@ -24,11 +24,11 @@
 #' @param grp_vars Character vector of additional grouping variable names
 #'   present in `x$fixations` (and in `x$responses` when
 #'   `type = "cascade"`), or `NULL` (default) for no extra grouping beyond
-#'   the identifier column. When `type = "indexes"`, `trial_vars` will be
-#'   automatically appended to `grp_vars`, because indexes computation must
-#'   be stratified by trials for it to be valid.
+#'   the identifier column. When `type = "measures"`, `trial_vars` will be
+#'   automatically appended to `grp_vars` before processing, because measures
+#'   computation must be stratified by trials for it to be valid.
 #' @param stats Character vector of statistics to compute. Only used when
-#'   `type = "indexes"`. Defaults to `c("fix_count", "dwell_total")`. Valid
+#'   `type = "measures"`. Defaults to `c("fix_count", "dwell_total")`. Valid
 #'   values:
 #'   \describe{
 #'     \item{`"fixation_count"`}{Total number of fixations on the AOI.}
@@ -83,7 +83,7 @@
 #'     \item{`"watch_time"`}{Cumulative time until the end of the last
 #'       fixation in the observation window.}
 #'   }
-#' @param window Numeric(1). When `type = "indexes"`: upper bound on
+#' @param window Numeric(1). When `type = "measures"`: upper bound on
 #'   fixation end time (`etime`); fixations with `etime >= window` are
 #'   excluded, and a `_<window>` suffix is appended to statistic column
 #'   names. `Inf` (default) keeps all fixations. When `type = "cascade"`:
@@ -93,10 +93,10 @@
 #'   milliseconds are assumed and the value is automatically converted.
 #' @param query_aoi Character(1). Label of the query AOI in
 #'   `x$layout$aoi`. Required for all `transitions_*` statistics when
-#'   `type = "indexes"`. Defaults to `NULL`.
+#'   `type = "measures"`. Defaults to `NULL`.
 #' @param reference_aois Character(2). Labels of the two reference AOIs in
 #'   `x$layout$aoi`. Required for `transitions_*` and `*_reference_*` statistics
-#'   when `type = "indexes"`. For `type = "cascade"`, reference AOIs are derived
+#'   when `type = "measures"`. For `type = "cascade"`, reference AOIs are derived
 #'   automatically from the unique non-`NA` values of `chosen_aoi_col` in
 #'   `x$responses`. Defaults to `NULL`.
 #' @param n_bins Integer(1). Number of equal-width time bins spanning
@@ -112,7 +112,7 @@
 #'
 #' @returns The same object with `$derivatives` populated as a `data.frame`.
 #'   The class vector is prepended with a result subclass:
-#'   `"mpr_et_indexes"` when `type = "indexes"`, or
+#'   `"mpr_et_measures"` when `type = "measures"`, or
 #'   `"mpr_gaze_cascade"` when `type = "cascade"`.
 #'
 #' @seealso [build_eyelink_eyetracking()], [plot.mpr_gaze_cascade()]
