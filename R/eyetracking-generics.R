@@ -112,7 +112,7 @@
 #'
 #' @returns The same object with `$derivatives` populated as a `data.frame`.
 #'   The class vector is prepended with a result subclass:
-#'   `"mpr_et_measures"` when `type = "measures"`, or
+#'   `"mpr_gaze_measures"` when `type = "measures"`, or
 #'   `"mpr_gaze_cascade"` when `type = "cascade"`.
 #'
 #' @seealso [build_eyelink_eyetracking()], [plot.mpr_gaze_cascade()]
@@ -128,5 +128,63 @@ process <- function(x, ...) {
 process.default <- function(x, ...) {
   cli::cli_abort(c(
     "No `process` method defined for class {paste(class(x), collapse = ' / ')}."
+  ))
+}
+
+
+#' Pivot a dataset from long to wide format
+#'
+#' A generic used across \{mathpsychr\} subsystems. Dispatches to a method for
+#' the concrete subclass, which pivots long format data to their appropriate
+#' wide format form.
+#'
+#' @param x An object with a registered `compute` method (e.g.
+#'   `mpr_gaze_measures`).
+#' @param ... Additional arguments passed to methods.
+#'
+#' @returns The original class object with added `shape = "wide"` and
+#'   `pivot_spec` attributes, and data in `x$derivatives` pivoted.
+#'
+#' @export
+flatten <- function(x, ...) {
+  UseMethod("flatten")
+}
+
+
+#' @rdname flatten
+#' @export
+flatten.default <- function(x, ...) {
+  cli::cli_abort(c(
+    "No {.fn flatten} method for objects of class {.cls {class(x)}}.",
+    "i" = "Did you mean to call `process(type = \"measures\")` first?"
+  ))
+}
+
+
+#' Back-pivot a dataset from wide to long format
+#'
+#' A generic used across \{mathpsychr\} subsystems. Dispatches to a method for
+#' the concrete subclass, which pivots wide format data (typically original) to
+#' their appropriate long format form.
+#'
+#' @param x An object with a registered `compute` method (e.g.
+#'   `mpr_gaze_measures`).
+#' @param ... Additional arguments passed to methods.
+#'
+#' @returns The original class object with added `shape = "wide"` and
+#'   `pivot_spec` attributes, and data in `x$derivatives` pivoted.
+#'
+#' @export
+lengthen <- function(x, ...) {
+  UseMethod("lengthen")
+}
+
+
+#' @rdname lengthen
+#' @export
+lengthen.default <- function(x, ...) {
+  cli::cli_abort(c(
+    "No {.fn lengthen} method for objects of class {.cls {class(x)}}.",
+    "i" = "Did you mean to call `process(type = \"measures\")` first?"
   ))
 }

@@ -66,6 +66,10 @@
 #'   identification. These variables need to be present in both `x$fixations`
 #'   and `x$responses`
 #' @param grp_vars Character vector of grouping variable names, or `NULL`.
+#'   The analysis is not stratified by `grp_vars` in this step, bacuase only
+#'   grouping variables that would alter results would need to be intra-trial.
+#'   Instead, the function assumes each trial must fall within a single group,
+#'   and `grp_vars` are saved as an attribute and kept in data for future use.
 #' @param stats Character vector of statistics to compute; validated against
 #'   `.valid_et_stats`.
 #' @param window Numeric. Upper bound on fixation `etime`; `Inf` keeps all.
@@ -94,7 +98,7 @@
   unknown_stats <- setdiff(stats, c(.valid_et_stats, "all"))
   if (length(unknown_stats) > 0L) {
     cli::cli_abort(c(
-      "Unknown statistic{?s} requested in `stats`: {.val {unknown_stats}}.",
+            "Unknown statistic{?s} requested in `stats`: {.val {unknown_stats}}.",
       "i" = "Valid statistics are: {.val {(.valid_et_stats)}}."
     ))
   }
@@ -103,14 +107,14 @@
   if (length(requested_transitions) > 0L) {
     if (is.null(query_aoi) || is.null(reference_aois)) {
       cli::cli_abort(c(
-        "Transition statistics require both `query_aoi` and `reference_aois`.",
+              "Transition statistics require both `query_aoi` and `reference_aois`.",
         "x" = "Requested transition stat{?s}: {.val {requested_transitions}}.",
         "i" = "Supply the `query_aoi` and both `reference_aois`."
       ))
     }
     if (!all(c(query_aoi, reference_aois) %in% x$layout$aoi)) {
       cli::cli_abort(c(
-        "`query_aoi` and both `reference_aois` must be present in `x$layout$aoi`.",
+              "`query_aoi` and both `reference_aois` must be present in `x$layout$aoi`.",
         "i" = "Supplied `query_aoi`: {.val {query_aoi}}.",
         "i" = "Supplied `reference_aois`: {.val {reference_aois}}.",
         "i" = "Supplied `x$layout$aoi`: {.val {x$layout$aoi}}."
@@ -122,14 +126,14 @@
   if (length(requested_reference_stats) > 0L) {
     if (is.null(reference_aois)) {
       cli::cli_abort(c(
-        "Reference image-related statistics require `reference_aois`.",
+              "Reference image-related statistics require `reference_aois`.",
         "x" = "Requested reference-related stat{?s}: {.val {requested_reference_stats}}.",
         "i" = "Supply the `reference_aois`."
       ))
     }
     if (!all(reference_aois %in% x$layout$aoi)) {
       cli::cli_abort(c(
-        "Both `reference_aois` must be present in `x$layout$aoi`.",
+              "Both `reference_aois` must be present in `x$layout$aoi`.",
         "i" = "Supplied `reference_aois`: {.val {reference_aois}}.",
         "i" = "Supplied `x$layout$aoi`: {.val {x$layout$aoi}}."
       ))
@@ -151,7 +155,7 @@
   # --- Grouping structure -----------------------------------------------------
   grp_cols <- c(grp_vars, setdiff(trial_vars, grp_vars))
   id_cols  <- names(x$fixations)[endsWith(names(x$fixations), "_id")]
-  grp_full <- unique(c(id_cols, grp_cols))
+  grp_full <- unique(c(id_cols, grp_cols)) # `grp_vars` other than `trial_vars` do not alter calculations but are always copied
 
   if (is.null(query_aoi)) {
     query_aoi <- NA_character_
@@ -199,13 +203,13 @@
 
   # --- Switch / transition counts (per group) ---------------------------------
   count_switches <- function(aoi, na.rm = FALSE) {
-    if (na.rm) aoi <- aoi[complete.cases(aoi)]
+    if (na.rm) aoi <- aoi[stats::complete.cases(aoi)]
     prev <- dplyr::lag(aoi)
     sum(!is.na(aoi) & !is.na(prev) & aoi != prev)
   }
 
   count_transitions <- function(aoi, stim1, stim2, na.rm = FALSE) {
-    if (na.rm) aoi <- aoi[complete.cases(aoi)]
+    if (na.rm) aoi <- aoi[stats::complete.cases(aoi)]
     prev <- dplyr::lag(aoi)
     trans <- ((aoi %in% stim1 & prev %in% stim2) | (aoi %in% stim2 & prev %in% stim1)) & aoi != prev
     sum(trans, na.rm = TRUE)
@@ -385,6 +389,7 @@
       .cols = tidyselect::all_of(stats)
     )
 
+  attr(output, "id_cols")    <- id_cols
   attr(output, "trial_cols") <- trial_vars
   attr(output, "grp_vars")   <- grp_vars
   output
