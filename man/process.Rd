@@ -145,7 +145,7 @@ Defaults to \code{"chosen_aoi"}.}
 \value{
 The same object with \verb{$derivatives} populated as a \code{data.frame}.
 The class vector is prepended with a result subclass:
-\code{"mpr_et_measures"} when \code{type = "measures"}, or
+\code{"mpr_gaze_measures"} when \code{type = "measures"}, or
 \code{"mpr_gaze_cascade"} when \code{type = "cascade"}.
 }
 \description{
