@@ -196,6 +196,7 @@
 
   attr(output, "window")   <- window
   attr(output, "n_bins")   <- n_bins
+  attr(output, "id_cols")  <- id_cols
   attr(output, "grp_vars") <- grp_vars
   output
 }

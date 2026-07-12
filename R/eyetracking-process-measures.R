@@ -66,7 +66,6 @@
 #'   identification. These variables need to be present in both `x$fixations`
 #'   and `x$responses`
 #' @param grp_vars Character vector of grouping variable names, or `NULL`.
-#'   Needs to include
 #' @param stats Character vector of statistics to compute; validated against
 #'   `.valid_et_stats`.
 #' @param window Numeric. Upper bound on fixation `etime`; `Inf` keeps all.
@@ -386,7 +385,6 @@
       .cols = tidyselect::all_of(stats)
     )
 
-  attr(output, "id_cols")    <- id_cols
   attr(output, "trial_cols") <- trial_vars
   attr(output, "grp_vars")   <- grp_vars
   output

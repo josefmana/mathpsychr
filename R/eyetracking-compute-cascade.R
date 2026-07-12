@@ -283,7 +283,7 @@ compute.mpr_gaze_cascade <- function(
 ) {
   fit_type <- match.arg(fit_type)
   derivatives <- x$derivatives
-  id_cols  <- names(derivatives)[endsWith(names(derivatives), "_id")]
+  id_cols  <- attr(derivatives, "id_cols")
   grp_vars <- attr(derivatives, "grp_vars")
 
   fitters <- list(
