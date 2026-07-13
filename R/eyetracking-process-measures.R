@@ -66,7 +66,7 @@
 #'   identification. These variables need to be present in both `x$fixations`
 #'   and `x$responses`
 #' @param grp_vars Character vector of grouping variable names, or `NULL`.
-#'   The analysis is not stratified by `grp_vars` in this step, bacuase only
+#'   The analysis is not stratified by `grp_vars` in this step, bacause only
 #'   grouping variables that would alter results would need to be intra-trial.
 #'   Instead, the function assumes each trial must fall within a single group,
 #'   and `grp_vars` are saved as an attribute and kept in data for future use.
@@ -140,6 +140,30 @@
     }
   }
 
+  # ---- Validate grouping variables -------------------------------------------
+  if (!is.null(grp_vars)) {
+    if (is.null(x$responses)) {
+      grp_vars <- NULL
+      cli::cli_warn(c(
+        "!" = "`grp_vars` specified with `x$responses` missing.",
+        "i" = "Setting `grp_vars` to NULL",
+        "i" = "If you wish to include grouping variables, provide valid `x$responses`."
+      ))
+    } else {
+      missing_grps <- grp_vars[!grp_vars %in% names(x$responses)]
+      if (length(missing_grps > 1L)) {
+        grp_vars <- grp_vars[grp_vars %in% names(x$responses)]
+        cli::cli_warn(c(
+          "",
+          "!" = "All specified `grp_vars` must be present in `x$responses`.",
+          "i" = "{.val {missing_grps}} {?was/were} specified as `grp_vars` but {?is/are} missing from `x$response`.",
+          "i" = "Dropping {.val {missing_grps}} from `grp_vars`.",
+          "i" = "Remaining `grp_vars`: {.val {grp_vars}}."
+        ))
+      }
+    }
+  }
+
   # --- Fill-in statistics -----------------------------------------------------
   if (length(stats) < 2L) {
     if (is.null(stats) || stats == "all") {
@@ -153,9 +177,8 @@
   }
 
   # --- Grouping structure -----------------------------------------------------
-  grp_cols <- c(grp_vars, setdiff(trial_vars, grp_vars))
   id_cols  <- names(x$fixations)[endsWith(names(x$fixations), "_id")]
-  grp_full <- unique(c(id_cols, grp_cols)) # `grp_vars` other than `trial_vars` do not alter calculations but are always copied
+  grp_full <- unique(c(id_cols, trial_vars))
 
   if (is.null(query_aoi)) {
     query_aoi <- NA_character_
@@ -164,17 +187,14 @@
     reference_aois <- c(NA_character_, NA_character_)
   }
 
-  # --- Annotate, trim and (optionally) join responses -------------------------
+  # --- Annotate and trim ------------------------------------------------------
   annotated <-
     x$fixations |>
     .annotate_fixations(x$layout) |>
     dplyr::filter(
       .data$stime > 0,
       .data$etime < window
-    )
-
-  annotated <-
-    annotated |>
+    ) |>
     dplyr::arrange(
       dplyr::across(tidyselect::all_of(grp_full)),
       .data$stime
@@ -373,11 +393,25 @@
       )
     )
 
+  # --- Optionally add responses -----------------------------------------------
+  if (!is.null(x$responses)) {
+    join_by_id <- intersect(id_cols, names(x$responses))
+    responses <- x$responses |>
+      dplyr::select(tidyselect::all_of(c(join_by_id, trial_vars, grp_vars)))
+    combined <- dplyr::left_join(
+      combined,
+      responses,
+      by = c(join_by_id, trial_vars),
+      relationship = "many-to-one"
+    )
+  }
+
   # --- Select requested statistics and apply window suffix --------------------
   output <-
     combined |>
     dplyr::select(
       tidyselect::all_of(grp_full),
+      tidyselect::all_of(grp_vars),
       tidyselect::contains("aoi"),
       tidyselect::all_of(stats)
     ) |>
