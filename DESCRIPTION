@@ -20,6 +20,7 @@ Imports:
     purrr,
     readr,
     rlang,
+    rstatix,
     scales,
     stringr,
     tibble,
