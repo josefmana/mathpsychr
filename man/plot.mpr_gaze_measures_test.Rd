@@ -10,7 +10,7 @@
 \item{x}{An \code{mpr_gaze_measures_test} object, as returned by
 \code{\link[=compute.mpr_gaze_measures]{compute.mpr_gaze_measures()}}.}
 
-\item{stat}{Character(1). Base name of the statistic to plot (one of
+\item{stat}{Character(1). Base name of the measure to plot (one of
 \code{x$stats}). Defaults to the first tested statistic, with a message.}
 
 \item{...}{Currently unused.}
@@ -21,11 +21,7 @@ A \code{\link[ggplot2:ggplot]{ggplot2::ggplot()}} object.
 \description{
 Per-AOI violin plot of the participant-level averaged data for one
 statistic, with the group mean and 95\% CI overlaid. Faceted by
-\code{grp_vars} when the comparison was stratified. See
-\code{eyetracking-plot.R} for the "every layer needs \code{facet_by} columns"
-pitfall this method is careful to avoid: both the violin layer
-(\code{x$avg_data}) and the mean/CI layer (\code{summary_df}, derived from it)
-carry the same \code{grp_vars} columns.
+\code{grp_vars} when the comparison was stratified.
 }
 \seealso{
 Other eyetracking: 

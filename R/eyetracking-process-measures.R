@@ -10,6 +10,7 @@
   "revisits_count",
   "transitions_ref_to_ref",
   "direct_transitions_ref_to_ref",
+  "transitions_query_refs",
   "direct_transitions_query_refs",
   "transitions_query_ref1",
   "direct_transitions_query_ref1",

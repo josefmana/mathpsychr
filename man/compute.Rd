@@ -18,7 +18,14 @@
   ...
 )
 
-\method{compute}{mpr_gaze_measures}(x, by_group = TRUE, alpha = 0.05, p_adjust_method = "bonferroni", ...)
+\method{compute}{mpr_gaze_measures}(
+  x,
+  by_group = TRUE,
+  stats = NULL,
+  alpha = 0.05,
+  p_adjust_method = "bonferroni",
+  ...
+)
 
 compute(x, ...)
 
@@ -41,13 +48,18 @@ or \code{mpr_gaze_cascade}).}
 \item{...}{Additional arguments passed to methods.}
 
 \item{by_group}{Logical(1). When \code{x$derivatives} carries a non-\code{NULL}
-\code{grp_vars} attribute, stratify the AOI comparison within each
-\code{grp_vars} combination (default \code{TRUE}). Set to \code{FALSE} for a single
-pooled AOI comparison even when \code{grp_vars} is present.}
+\code{grp_vars} attribute, include \code{grp_vars} as a comparison factor
+alongside/instead of AOI (default \code{TRUE}; see Details). Set to \code{FALSE}
+to ignore \code{grp_vars} entirely: AOI-scope statistics get a pooled AOI
+comparison, Stimulus-scope statistics get a plain descriptive summary
+(no factor to compare).}
+
+\item{stats}{Character vector of base statistic names to test or \code{NULL}
+(default) to test every statistic present.}
 
 \item{p_adjust_method}{Character(1). Passed to
-\code{\link[rstatix:t_test]{rstatix::pairwise_t_test()}} for the >2-AOI-level pairwise post-hoc
-step. Defaults to \code{"bonferroni"}.}
+\code{\link[rstatix:t_test]{rstatix::pairwise_t_test()}} for post-hoc steps. Defaults to
+\code{"bonferroni"}.}
 }
 \value{
 An \code{mpr_cascade_fit} object, i.e., a list containing:
@@ -69,16 +81,16 @@ interactive console use.
 
 An \code{mpr_gaze_measures_test} object, i.e., a list containing:
 \describe{
-\item{test_summary}{Tidy omnibus test result (paired t-test or
-repeated-measures ANOVA), one row per statistic per \code{grp_vars}
-stratum (if stratifying).}
-\item{pairwise_summary}{Tidy pairwise post-hoc comparisons, or \code{NULL}
-when every tested statistic had exactly two AOI levels (t-test case,
-no post-hoc needed) -- never an empty data.frame.}
-\item{avg_data}{Participant-level averaged input data (one row per
-identifier x AOI x \code{grp_vars} stratum), returned for inspection.}
-\item{grp_vars}{Character containing the stratifying variable
-name(s) actually used, or \code{NULL}.}
+\item{test_summary}{Tidy omnibus test result, one row per measure
+(per factor combination tested).}
+\item{pairwise_summary}{Tidy pairwise/simple-effects post-hoc
+comparisons, or \code{NULL} if none were needed anywhere.}
+\item{descriptive_summary}{Tidy global mean/SD for Stimulus-scope
+statistics when \code{grp_vars} is \code{NULL}, or \code{NULL} otherwise.}
+\item{avg_data}{Participant-level averaged input data, returned for
+inspection or custom operations.}
+\item{grp_vars}{Character containing the \code{grp_vars} actually
+available for comparison, or \code{NULL}.}
 \item{by_group}{Logical. The \code{by_group} argument used.}
 \item{alpha}{Significance level used.}
 \item{aois}{Character. AOI levels compared.}
@@ -98,6 +110,24 @@ A generic used across \{mathpsychr\} subsystems. Dispatches to a method for
 the concrete subclass, which performs that subsystem's numerical work
 and returns the results in whatever form is natural for it. See the
 subclass-specific sections below for exact return shapes.
+}
+\details{
+Each statistic is routed by its AOI/Stimulus scope (see
+\code{mathpsychr:::.measure_taxonomy}):
+\itemize{
+\item \strong{AOI-scope} (e.g. dwell time, fixation count):compared across AOI.
+When \code{grp_vars} is present (and \code{by_group = TRUE}), \code{grp_vars[1]} enters
+as a second factor yielding an AOI x group interaction test.
+\item \strong{Stimulus-scope} (e.g. switches, watch time, transitions; one value
+per trial, not per AOI) compared across \code{grp_vars} (up to the first
+two, in the order supplied) when present; reported as a global
+descriptive mean/SD, with no test, when \code{grp_vars} is \code{NULL}.
+}
+
+Within each branch, a single 2-level factor gets a paired/unpaired t-test
+(auto-detected via identifier nesting); anything with more levels, or two
+factors regardless of level counts gets an ANOVA with pairwise/simple-effects
+post-hoc.
 }
 \section{Methods (by class)}{
 \itemize{
