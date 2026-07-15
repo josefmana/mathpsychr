@@ -1,12 +1,10 @@
 # Display labels for supported test types
 .measures_test_labels <- c(
-  t_test             = "Paired t-test",
-  anova              = "Repeated-measures ANOVA",
-  pairwise_t_test    = "Pairwise t-test",
-  anova_within_2way  = "Two-way repeated-measures ANOVA (both factors within)",
-  anova_between_2way = "Two-way ANOVA (both factors between)",
-  anova_mixed        = "Mixed ANOVA (one factor within, one between)",
-  descriptive        = "Descriptive summary (no grouping factor to compare)"
+  anova               = "Repeated-measures ANOVA",
+  pairwise_t_test     = "Pairwise t-test",
+  anova_within_2way   = "Two-way repeated-measures ANOVA (both factors within)",
+  anova_between_2way  = "Two-way ANOVA (both factors between)",
+  anova_mixed         = "Mixed ANOVA (one factor within, one between)"
 )
 
 # Measure taxonomy
@@ -97,7 +95,7 @@
   matched <- .match_aoi_specific_cols(names(derivatives))
   pattern <- paste0("^(", paste(.aoi_specific_stats, collapse = "|"), ")(_[0-9.]+)?$")
   base <- sub(pattern, "\\1", matched)
-  stats::setNames(matched, base)
+  rlang::set_names(matched, base)
 }
 
 
@@ -105,10 +103,10 @@
 #'
 #' Unlike `.match_aoi_specific_cols()` (scoped in `eyetracking-reshape.R` to
 #' statistics that vary by AOI, for pivot-spec purposes), Stimulus-scope
-#' statistics don't need special AOI-aware pivot handling. Instead they are
-#' just ordinary columns, optionally window-suffixed like every other requested
-#' stat (see `.process_et_measures()`'s `rename_with()`). This function mirrors
-#' that suffix-aware matching locally, against the Stimulus-scope subset of
+#' statistics do not need special AOI-aware pivot handling. Instead, they are
+#' ordinary columns, optionally window-suffixed like every other requested
+#' stat (see `.process_et_measures()`'s `rename_with()`). This fucntion mirrors
+#' the suffix-aware matching locally, against the Stimulus-scope subset of
 #' `.measure_taxonomy` (excluding the categorical, not-yet-testable stats).
 #'
 #' @param derivatives `mpr_gaze_measures` object `$derivatives`.
@@ -126,42 +124,66 @@
   cols <- names(derivatives)
   matched <- cols[grepl(pattern, cols)]
   base <- sub(pattern, "\\1", matched)
-  stats::setNames(matched, base)
+  rlang::set_names(matched, base)
 }
 
 
-#' Resolve every testable statistic column present in `derivatives`
+#' Resolve categorical Stimulus-scope statistic columns present in
+#' `derivatives`
 #'
-#' Combines [.stat_cols_for_measures()] (AOI-scope) and
-#' [.stimulus_stat_cols_for_measures()] (Stimulus-scope) into one lookup
-#' table, and applies an optional `stats` subset (see
-#' [compute.mpr_gaze_measures()]'s `stats` argument) uniformly across both.
+#' Same suffix-aware matching as [.stimulus_stat_cols_for_measures()], but
+#' against `.categorical_measure_stats`. These are Stimulus-scope by join
+#' (see `.measure_taxonomy`) but categorical by value, so they are transform
+#' to proportions downstream and treate as AOI-scope measures instead.
+#'
+#' @param derivatives `mpr_gaze_measures` object `$derivatives`.
+#'
+#' @returns A character vector of actual column names in `derivatives`,
+#'   named by base stat.
+#'
+#' @noRd
+.categorical_stat_cols_for_measures <- function(derivatives) {
+  pattern <- paste0("^(", paste(.categorical_measure_stats, collapse = "|"), ")(_[0-9.]+)?$")
+  cols <- names(derivatives)
+  matched <- cols[grepl(pattern, cols)]
+  base <- sub(pattern, "\\1", matched)
+  rlang::set_names(matched, base)
+}
+
+
+#' Resolve every statistic column present in `derivatives`, split by scope
+#'
+#' Combines [.stat_cols_for_measures()] (AOI-scope),
+#' [.stimulus_stat_cols_for_measures()] (Stimulus-scope, continuous), and
+#' [.categorical_stat_cols_for_measures()] (Stimulus-scope, categorical)
+#' into one lookup table, and applies an optional `stats` subset (see
+#' [compute.mpr_gaze_measures()]'s `stats` argument) uniformly across all
+#' three.
 #'
 #' @param derivatives `mpr_gaze_measures` object `$derivatives`.
 #' @param stats Character vector of base statistic names to keep, or `NULL`
 #'   to keep everything found.
 #'
 #' @returns A tibble with columns `stat` (base name), `col` (actual,
-#'   possibly window-suffixed column name), and `scope`.
+#'   possibly window-suffixed column name), `scope`
+#'   (`"aoi"`/`"stimulus"`/`"categorical"`).
 #'
 #' @noRd
 .resolve_measure_stat_cols <- function(derivatives, stats = NULL) {
   aoi  <- .stat_cols_for_measures(derivatives)
   stim <- .stimulus_stat_cols_for_measures(derivatives)
+  cat  <- .categorical_stat_cols_for_measures(derivatives)
 
   stat_map <- dplyr::bind_rows(
     if (length(aoi) > 0L)  tibble::tibble(stat = names(aoi),  col = unname(aoi),  scope = "aoi"),
-    if (length(stim) > 0L) tibble::tibble(stat = names(stim), col = unname(stim), scope = "stimulus")
+    if (length(stim) > 0L) tibble::tibble(stat = names(stim), col = unname(stim), scope = "stimulus"),
+    if (length(cat) > 0L)  tibble::tibble(stat = names(cat),  col = unname(cat),  scope = "categorical")
   )
 
   if (nrow(stat_map) == 0L) {
-    expected_stats <- c(
-      .aoi_specific_stats,
-      setdiff(.measure_taxonomy$stat[.measure_taxonomy$scope == 'stimulus'], .categorical_measure_stats)
-    )
     cli::cli_abort(c(
-            "No testable eye-tracking measure found in `x$derivatives`.",
-      "i" = "Expected one or more of {.val {expected_stats}} (optionally window-suffixed)."
+            "No statistics found in `x$derivatives`.",
+      "i" = "Expected one or more of {.val {.measure_taxonomy$stat}} (optionally window-suffixed)."
     ))
   }
 
@@ -184,11 +206,11 @@
 #' grouping (x AOI, for AOI-scope statistics)
 #'
 #' AOI-scope statistics are averaged over `trial_cols`, grouped by identifier
-#' x AOI x `stratify_vars`, as before.
+#' x AOI x `stratify_vars`.
 #'
 #' Stimulus-scope statistics do not vary by AOI within a trial.
 #' `dplyr::distinct()` on trial identity, taken *before* averaging, collapses
-#' the AOI-induced repetition back down to one row per trial, so each trial is
+#' AOI-induced repetition back down to one row per trial, so each trial is
 #' counted once rather than once per AOI level. The resulting rows carry
 #' `aoi = NA` (the concept does not apply) rather than a spurious AOI column
 #' suggesting these differ by AOI.
@@ -227,7 +249,7 @@
       ) |>
       dplyr::group_by(dplyr::across(tidyselect::all_of(c(grp_aoi, "measure")))) |>
       dplyr::summarise(
-        mean = mean(.data$value, na.rm = TRUE),
+        avg_value = mean(.data$value, na.rm = TRUE),
         std = stats::sd(.data$value, na.rm = TRUE),
         n = sum(!is.na(.data$value)),
         .groups = "drop"
@@ -250,8 +272,8 @@
       ) |>
       dplyr::group_by(dplyr::across(tidyselect::all_of(c(grp_stim, "measure")))) |>
       dplyr::summarise(
-        mean = mean(.data$value, na.rm = TRUE),
-        std  = stats::sd(.data$value, na.rm = TRUE),
+        avg_value = mean(.data$value, na.rm = TRUE),
+        std = stats::sd(.data$value, na.rm = TRUE),
         n = sum(!is.na(.data$value)),
         .groups = "drop"
       ) |>
@@ -260,6 +282,136 @@
 
   dplyr::bind_rows(aoi_avg, stim_avg)
 }
+
+
+#' Aggregate categorical Stimulus-scope statistics to per-identifier category
+#' counts and proportions
+#'
+#' Mirrors the Stimulus-scope branch of [.average_measures_participant()]
+#' (de-duplicate on trial identity first, since these do not vary by AOI
+#' within a trial either). Each identifier contributes a count of trials
+#' falling in each category level, converted to a proportion (the categorical
+#' analogue of the participant-level average, see
+#' [.categorical_avg_from_counts()]).
+#'
+#' Zero-filled before the proportion is taken: an identifier/stratum with
+#' zero trials in some category *that was observed at all, for that
+#' measure* needs an explicit `n = 0` row, not a silently absent
+#' combination. Built as an explicit skeleton join (rather than relying on
+#' grouped `tidyr::complete()`).
+#'
+#' @param derivatives `mpr_gaze_measures` object `$derivatives`.
+#' @param id_cols Character. Identifier column(s).
+#' @param trial_cols Character. Trial-identifying column(s).
+#' @param categorical_cols Named character vector from
+#'   [.resolve_measure_stat_cols()] (names = base stat, values = actual
+#'   column name), `scope == "categorical"` rows only.
+#' @param stratify_vars Character or `NULL`. `grp_vars` carried through as
+#'   columns.
+#'
+#' @returns A data.frame with one row per `id_cols` x `measure` x
+#'   `category` (x `stratify_vars`), with trial count `n` and `proportion`
+#'   (of that identifier/stratum's trials for that measure). `NULL` if
+#'   `categorical_cols` is empty.
+#'
+#' @noRd
+.count_measures_participant <- function(
+    derivatives, id_cols, trial_cols, categorical_cols, stratify_vars
+) {
+  if (length(categorical_cols) == 0L) {
+    return(NULL)
+  }
+
+  grp <- unique(c(id_cols, stratify_vars))
+
+  counts <-
+    derivatives |>
+    dplyr::rename(!!!categorical_cols) |>
+    dplyr::select(tidyselect::all_of(c(id_cols, trial_cols, stratify_vars, names(categorical_cols)))) |>
+    dplyr::distinct() |>
+    tidyr::pivot_longer(
+      !tidyselect::all_of(unique(c(id_cols, trial_cols, stratify_vars))),
+      names_to = "measure",
+      values_to = "category"
+    ) |>
+    dplyr::filter(!is.na(.data$category)) |>
+    dplyr::count(
+      dplyr::across(tidyselect::all_of(c(grp, "measure", "category"))),
+      name = "n"
+    )
+
+  skeleton <-
+    dplyr::distinct(counts, dplyr::across(tidyselect::all_of(c(grp, "measure")))) |>
+    dplyr::full_join(
+      dplyr::distinct(counts, .data$measure, .data$category),
+      by = "measure",
+      relationship = "many-to-many"
+    )
+
+  counts <-
+    dplyr::left_join(skeleton, counts, by = c(grp, "measure", "category")) |>
+    dplyr::mutate(n = dplyr::coalesce(.data$n, 0L))
+
+  counts |>
+    dplyr::group_by(dplyr::across(tidyselect::all_of(c(grp, "measure")))) |>
+    dplyr::mutate(proportion = .data$n / sum(.data$n)) |>
+    dplyr::ungroup()
+}
+
+
+#' Reshape per-identifier category proportions into the shape of AOI-scope
+#' `avg_data`, so they route through the identical comparison pipeline
+#'
+#' A categorical Stimulus-scope measure (first/last-fixated AOI or
+#' reference) records *which* AOI/reference was chosen. Once converted to a
+#' per-identifier proportion (via [.count_measures_participant()]), it is
+#' computation-steps-wise the same kind of thing as a continuous AOI-scope
+#' statistic: a within-subject, multi-level factor (the category standing
+#' in for AOI) with one value per identifier x level. Reusing `avg_data`'s
+#' `aoi`/`avg_value` columns for it (`aoi` from `category`, `avg_value` from
+#' `proportion`) means [.test_one_group_comparison()] and the AOI-scope
+#' branches of [.run_measure_tests()]/[.describe_measure_levels()] handle it
+#' with no additional code. Only `scope == "categorical"` distinguishes it
+#' from a true AOI-scope statistic, for labelling purposes. The *meaning*
+#' stays different (a proportion of trials, not a magnitude), which is
+#' exactly why that distinction is kept rather than relabelling these rows
+#' as `scope == "aoi"` outright.
+#'
+#' `std` is left `NA`. `n` carries the trial-count denominator, for parity with
+#' what `n` means in the continuous case (trials contributing to the value). It
+#' is not the categorical numerator, which stays untouched in `cat_counts`, the
+#' more granular/proximal artifact.
+#'
+#' @param cat_counts Output of [.count_measures_participant()] (already
+#'   carries a `proportion` column), or `NULL`.
+#' @param id_cols Character. Identifier column(s).
+#' @param stratify_vars Character or `NULL`.
+#'
+#' @returns A data.frame in `avg_data`'s shape (`scope = "categorical"`), or
+#'   `NULL` if `cat_counts` is `NULL`/empty.
+#'
+#' @noRd
+.categorical_avg_from_counts <- function(cat_counts, id_cols, stratify_vars) {
+  if (is.null(cat_counts) || nrow(cat_counts) == 0L) {
+    return(NULL)
+  }
+
+  grp <- unique(c(id_cols, stratify_vars))
+  cat_counts |>
+    dplyr::group_by(dplyr::across(tidyselect::all_of(c(grp, "measure")))) |>
+    dplyr::mutate(n_total = sum(.data$n)) |>
+    dplyr::ungroup() |>
+    dplyr::transmute(
+      dplyr::across(tidyselect::all_of(grp)),
+      measure = .data$measure,
+      aoi = .data$category,
+      avg_value = .data$proportion,
+      std = NA_real_,
+      n = .data$n_total,
+      scope = "categorical"
+    )
+}
+
 
 
 #' Trim `grp_vars` to at most `max_n`, warning if truncated
@@ -335,14 +487,12 @@
 #' factor via [.detect_nesting()].
 #'
 #' Test selection:
-#' * One factor, two levels -> t-test (paired if within-subject, unpaired
-#'   otherwise), with Cohen's d and its CI attached.
-#' * One factor, >2 levels -> ANOVA (repeated-measures or between-subjects,
-#'   per detected nesting) with pairwise post-hoc.
-#' * Two factors, any level counts -> ANOVA (within/between/mixed, per each
-#'   factor's detected nesting). Post-hoc is *simple-effects* pairwise
-#'   comparisons of the first factor within each level of the second (the
-#'   reverse decomposition is not produced automatically).
+#' * One factor, ANOVA (repeated-measures or between-subjects, per detected
+#'   nesting) with pairwise post-hoc.
+#' * Two factors, ANOVA (within/between/mixed, per each factor's detected
+#'   nesting). Post-hoc is *simple-effects* pairwise comparisons of the first
+#'   factor within each level of the second (the reverse decomposition is not
+#'   produced automatically).
 #'
 #' Completeness (for the paired/repeated-measures parts of the design) is
 #' checked only across within-subject factor combinations. A between-subject
@@ -351,6 +501,8 @@
 #'
 #' @param group_data One `measure`-group's slice of the (AOI- or
 #'   Stimulus-scope) `avg_data`.
+#' @param measure Character(1). Measure identity for informative message when
+#'   skipped due to inadequate data. Must be one of `.valid_et_stats`.
 #' @param id_cols Character. Identifier column(s); collapsed to a single
 #'   `.id` column, since {rstatix} requires a single `wid` column.
 #' @param factors Character(1) or Character(2). Column name(s) in `group_data`
@@ -366,7 +518,9 @@
 #'   dropping single-level ones.
 #'
 #' @noRd
-.test_one_group_comparison <- function(group_data, id_cols, factors, alpha, p_adjust_method) {
+.test_one_group_comparison <- function(
+    group_data, measure, id_cols, factors, alpha, p_adjust_method
+) {
   d <- group_data
   d$.id <- if (length(id_cols) == 1L) {
     as.character(d[[id_cols]])
@@ -378,7 +532,7 @@
 
   factors <- factors[vapply(factors, \(f) dplyr::n_distinct(d[[f]]) >= 2L, logical(1L))]
   if (length(factors) == 0L) {
-    cli::cli_warn("Skipping this measure: no factor with 2+ levels remained.")
+    cli::cli_warn("Skipping {.val {measure}} measure: no factor with 2+ levels remained.")
     return(NULL)
   }
 
@@ -390,13 +544,13 @@
     n_combos <- nrow(dplyr::distinct(d, dplyr::across(tidyselect::all_of(within_factors))))
     complete_ids <-
       d |>
-      dplyr::filter(!is.na(.data$mean)) |>
+      dplyr::filter(!is.na(.data$avg_value)) |>
       dplyr::distinct(.data$.id, dplyr::across(tidyselect::all_of(within_factors))) |>
       dplyr::count(.data$.id) |>
       dplyr::filter(.data$n == n_combos) |>
       dplyr::pull(.data$.id)
   } else {
-    complete_ids <- unique(d$.id[!is.na(d$mean)])
+    complete_ids <- unique(d$.id[!is.na(d$avg_value)])
   }
 
   n_dropped <- dplyr::n_distinct(d$.id) - length(complete_ids)
@@ -409,69 +563,57 @@
   d <- dplyr::filter(d, .data$.id %in% complete_ids)
 
   if (length(complete_ids) < 2L) {
-    cli::cli_warn("Skipping this measure: fewer than 2 complete identifiers.")
+    cli::cli_warn("Skipping {.val {measure}} measure: fewer than 2 complete identifiers.")
     return(NULL)
   }
 
-  # ---- One factor: t-test (2 levels) or one-way ANOVA (>2 levels) ------------
+  # ---- One factor: one-way ANOVA ---------------------------------------------
   if (length(factors) == 1L) {
     f <- factors[[1]]
     is_within <- f %in% within_factors
-    form <- stats::as.formula(paste("mean ~", f))
-
-    if (dplyr::n_distinct(d[[f]]) == 2L) {
-      test <-
-        d |>
-        rstatix::t_test(form, paired = is_within, detailed = TRUE, conf.level = 1 - alpha) |>
-        rstatix::add_significance()
-
-      effect <-
-        d |>
-        rstatix::cohens_d(form, paired = is_within, ci = TRUE, conf.level = 1 - alpha) |>
-        dplyr::mutate(
-          cohens_d           = .data$effsize,
-          cohens_d_magnitude = .data$magnitude,
-          cohens_d_conf_low  = .data$conf.low,
-          cohens_d_conf_high = .data$conf.high,
-          .keep = "none"
-        )
-
-      return(list(
-        test_type = "t_test",
-        test = dplyr::bind_cols(test, effect),
-        pairwise = NULL
-      ))
-    }
+    form <- stats::as.formula(paste("avg_value ~", f))
 
     test <- if (is_within) {
       d |>
-        rstatix::anova_test(dv = mean, wid = .data$.id, within = f) |>
+        rstatix::anova_test(dv = .data$avg_value, wid = .data$.id, within = f) |>
         rstatix::get_anova_table()
     } else {
       d |>
-        rstatix::anova_test(dv = mean, wid = .data$.id, between = f) |>
+        rstatix::anova_test(dv = .data$avg_value, wid = .data$.id, between = f) |>
         rstatix::get_anova_table()
     }
+
     pairwise <-
       d |>
       rstatix::pairwise_t_test(form, paired = is_within, detailed = TRUE, p.adjust.method = p_adjust_method)
 
+    effect <-
+      d |>
+      rstatix::cohens_d(form, paired = is_within, ci = TRUE, conf.level = 1 - alpha) |>
+      dplyr::mutate(
+        cohens_d           = .data$effsize,
+        cohens_d_magnitude = .data$magnitude,
+        cohens_d_conf_low  = .data$conf.low,
+        cohens_d_conf_high = .data$conf.high,
+        .keep = "none"
+      )
+
     return(list(
       test_type = "anova",
       test = test,
-      pairwise = pairwise
+      pairwise = dplyr::bind_cols(pairwise, effect)
     ))
   }
 
-  # ---- Two factors: always an ANOVA, with an interaction ---------------------
+  # ---- Two factors: two-way ANOVA with an interaction ------------------------
   f1 <- factors[[1]]
   f2 <- factors[[2]]
 
   test <-
     d |>
     rstatix::anova_test(
-      dv = mean,
-      wid = .id,
+      dv = .data$avg_value,
+      wid = .data$.id,
       within = if (length(within_factors) > 0L) within_factors else NULL,
       between = if (length(between_factors) > 0L) between_factors else NULL
     ) |>
@@ -489,7 +631,7 @@
     d |>
     dplyr::group_by(dplyr::across(tidyselect::all_of(f2))) |>
     rstatix::pairwise_t_test(
-      stats::as.formula(paste("mean ~", f1)),
+      stats::as.formula(paste("avg_value ~", f1)),
       paired = f1 %in% within_factors,
       detailed = TRUE,
       p.adjust.method = p_adjust_method
@@ -500,32 +642,119 @@
 }
 
 
-#' Run group-mean comparisons for every measure, within every scope
+#' Per-level descriptive statistics for continuous and categorical measures
+#'
+#' Runs unconditionally, independent of which (if any) test ran for a given
+#' measure. Always produces one row per measure x level combination:
+#' * AOI-scope and categorical: level = AOI/category (x `grp_vars[1]`, when
+#'   present, matching the factor used in [.test_one_group_comparison()]'s
+#'   AOI-scope branch).
+#' * Stimulus-scope (continuous): level = `grp_vars` (up to 2), or a single
+#'   overall row when `grp_vars` is `NULL`.
+#'
+#' @param avg_data Output of [.average_measures_participant()], with
+#'   [.categorical_avg_from_counts()]'s rows already bound in.
+#' @param stratify_vars Character or `NULL`.
+#'
+#' @returns A tibble with `measure`, `scope`, the relevant level column(s),
+#'   `level_mean`, `level_sd`, `n_id`. `NULL` if `avg_data` is empty.
+#'
+#' @noRd
+.describe_measure_levels <- function(avg_data, stratify_vars) {
+  aoi_data <- dplyr::filter(avg_data, .data$scope %in% c("aoi", "categorical"))
+  aoi_desc <- if (nrow(aoi_data) == 0L) {
+    NULL
+  } else {
+    aoi_grp <- .select_grp_vars(stratify_vars, 1L)
+    aoi_data |>
+      dplyr::group_by(dplyr::across(tidyselect::all_of(c("measure", "scope", "aoi", aoi_grp)))) |>
+      dplyr::summarise(
+        level_mean = mean(.data$avg_value, na.rm = TRUE),
+        level_sd = stats::sd(.data$avg_value, na.rm = TRUE),
+        n_id = dplyr::n(),
+        .groups = "drop"
+      )
+  }
+
+  stim_data <- dplyr::filter(avg_data, .data$scope == "stimulus")
+  stim_desc <- if (nrow(stim_data) == 0L) {
+    NULL
+  } else {
+    stim_grp <- .select_grp_vars(stratify_vars, 2L)
+    stim_data |>
+      dplyr::group_by(dplyr::across(tidyselect::all_of(c("measure", stim_grp)))) |>
+      dplyr::summarise(
+        level_mean = mean(.data$avg_value, na.rm = TRUE),
+        level_sd = stats::sd(.data$avg_value, na.rm = TRUE),
+        n_id = dplyr::n(),
+        .groups = "drop"
+      ) |>
+      dplyr::mutate(scope = "stimulus", .after = "measure")
+  }
+
+  dplyr::bind_rows(aoi_desc, stim_desc)
+}
+
+
+#' Per-level descriptive statistics (count/proportion) for categorical
+#' measures
+#'
+#' The categorical analogue of [.describe_measure_levels()]: a category x
+#' `grp_vars[1]` (or overall, when `grp_vars` is `NULL`) count/proportion
+#' table, always produced independent of whether a chi-square test ran.
+#'
+#' @param cat_counts Output of [.count_measures_participant()], or `NULL`.
+#' @param stratify_vars Character or `NULL`.
+#'
+#' @returns A tibble with `measure`, `scope`, the `grp_vars[1]` column (when
+#'   present), `category`, `n`, `proportion`. `NULL` if `cat_counts` is
+#'   `NULL`/empty.
+#'
+#' @noRd
+.describe_categorical_levels <- function(cat_counts, stratify_vars) {
+  if (is.null(cat_counts) || nrow(cat_counts) == 0L) {
+    return(NULL)
+  }
+
+  grp <- .select_grp_vars(stratify_vars, 1L)
+  grp_cols <- if (is.null(grp)) character(0L) else grp
+
+  cat_counts |>
+    dplyr::group_by(dplyr::across(tidyselect::all_of(c("measure", grp_cols, "category")))) |>
+    dplyr::summarise(n = sum(.data$n), .groups = "drop_last") |>
+    dplyr::mutate(proportion = .data$n / sum(.data$n)) |>
+    dplyr::ungroup() |>
+    dplyr::mutate(scope = "categorical", .after = "measure")
+}
+
+
+#' Run group-mean comparisons for every continuous measure, within every scope
 #'
 #' Thin looping orchestrator around [.test_one_group_comparison()]. AOI-scope
-#' measures are compared across AOI (plus `grp_vars[1]`, per
-#' [.select_grp_vars()], when present, including the AOI x group interaction).
-#' Stimulus-scope measures are compared across `grp_vars` (up to the first
-#' two) when present, or reported as a plain descriptive summary (no
-#' comparison factor exists) when `grp_vars` is `NULL`.
+#' and categorical measures (which share `avg_data`'s AOI-shaped rows; see
+#' [.categorical_avg_from_counts()]) are compared across AOI/category (plus
+#' `grp_vars[1]`, per [.select_grp_vars()], when present). Stimulus-scope
+#' measures are compared across `grp_vars` (up to the first two) when present;
+#' skipped entirely (no rows produced) when `grp_vars` is `NULL`.
 #'
-#' @param avg_data Output of [.average_measures_participant()]; carries a
-#'   `scope` column (`"aoi"`/`"stimulus"`).
+#' @param avg_data Output of [.average_measures_participant()], with
+#'   [.categorical_avg_from_counts()]'s rows already bound in; carries a
+#'   `scope` column (`"aoi"`/`"stimulus"`/`"categorical"`).
 #' @param id_cols Character. Identifier column(s).
 #' @param stratify_vars Character or `NULL`. `grp_vars` available to use as
 #'   comparison factors.
 #' @param alpha Numeric(1). Significance level.
 #' @param p_adjust_method Character(1). Post-hoc p-value adjustment method.
 #'
-#' @returns A list with `test_summary`, `pairwise_summary` (`NULL` if no
-#'   measure needed post-hoc anywhere), and `descriptive_summary` (`NULL`
-#'   unless at least one Stimulus-scope measure had `grp_vars = NULL`).
+#' @returns A list with `test_summary` and `pairwise_summary` (`NULL` if no
+#'   measure needed post-hoc anywhere).
 #'
 #' @noRd
-.run_measure_tests <- function(avg_data, id_cols, stratify_vars, alpha, p_adjust_method) {
+.run_measure_tests <- function(
+    avg_data, id_cols, stratify_vars, alpha, p_adjust_method
+) {
   test_rows <- list()
   pairwise_rows <- list()
-  descriptive_rows <- list()
 
   .add_result <- function(result, key, scope) {
     if (is.null(result)) {
@@ -551,57 +780,39 @@
     invisible(NULL)
   }
 
-  # ---- AOI-scope: AOI (+ grp_vars[1] as a second factor, when present) -------
-  aoi_data <- dplyr::filter(avg_data, .data$scope == "aoi")
+  # ---- AOI-shaped: AOI or category -------------------------------------------
+  aoi_data <- dplyr::filter(avg_data, .data$scope %in% c("aoi", "categorical"))
   if (nrow(aoi_data) > 0L) {
     aoi_grp <- .select_grp_vars(stratify_vars, 1L)
-    grouped <- dplyr::group_by(aoi_data, dplyr::across(tidyselect::all_of("measure")))
+    grouped <- dplyr::group_by(aoi_data, dplyr::across(tidyselect::all_of(c("measure", "scope"))))
     keys_df <- dplyr::group_keys(grouped)
     chunks  <- dplyr::group_split(grouped)
 
     for (i in seq_len(nrow(keys_df))) {
       chunk <- chunks[[i]]
       chunk$aoi_lvl <- chunk$aoi
-      result <- .test_one_group_comparison(chunk, id_cols, c("aoi_lvl", aoi_grp), alpha, p_adjust_method)
-      .add_result(result, keys_df[i, , drop = FALSE], "aoi")
+      result <- .test_one_group_comparison(chunk, keys_df$measure[i], id_cols, c("aoi_lvl", aoi_grp), alpha, p_adjust_method)
+      .add_result(result, keys_df[i, "measure", drop = FALSE], keys_df$scope[i])
     }
   }
 
-  # ---- Stimulus-scope: grp_vars (up to 2) or a global descriptive summary ----
+  # ---- Stimulus-scope --------------------------------------------------------
   stim_data <- dplyr::filter(avg_data, .data$scope == "stimulus")
-  if (nrow(stim_data) > 0L) {
-    if (is.null(stratify_vars)) {
-      descriptive_rows[[1]] <-
-        stim_data |>
-        dplyr::group_by(.data$measure) |>
-        dplyr::summarise(
-          grand_mean = mean(.data$mean, na.rm = TRUE),
-          grand_sd = stats::sd(.data$mean, na.rm = TRUE),
-          n_id = dplyr::n(),
-          .groups = "drop"
-        ) |>
-        dplyr::mutate(
-          scope      = "stimulus",
-          test_type  = "descriptive",
-          test_label = unname(.measures_test_labels["descriptive"])
-        )
-    } else {
-      stim_grp <- .select_grp_vars(stratify_vars, 2L)
-      grouped  <- dplyr::group_by(stim_data, dplyr::across(tidyselect::all_of("measure")))
-      keys_df  <- dplyr::group_keys(grouped)
-      chunks   <- dplyr::group_split(grouped)
+  if (nrow(stim_data) > 0L && !is.null(stratify_vars)) {
+    stim_grp <- .select_grp_vars(stratify_vars, 2L)
+    grouped <- dplyr::group_by(stim_data, dplyr::across(tidyselect::all_of("measure")))
+    keys_df <- dplyr::group_keys(grouped)
+    chunks  <- dplyr::group_split(grouped)
 
-      for (i in seq_len(nrow(keys_df))) {
-        result <- .test_one_group_comparison(chunks[[i]], id_cols, stim_grp, alpha, p_adjust_method)
-        .add_result(result, keys_df[i, , drop = FALSE], "stimulus")
-      }
+    for (i in seq_len(nrow(keys_df))) {
+      result  <- .test_one_group_comparison(chunks[[i]], keys_df$measure[i], id_cols, stim_grp, alpha, p_adjust_method)
+      .add_result(result, keys_df[i, "measure", drop = FALSE], "stimulus")
     }
   }
 
   list(
     test_summary = dplyr::bind_rows(test_rows),
-    pairwise_summary = if (length(pairwise_rows) == 0L) NULL else dplyr::bind_rows(pairwise_rows),
-    descriptive_summary  = if (length(descriptive_rows) == 0L) NULL else dplyr::bind_rows(descriptive_rows)
+    pairwise_summary = if (length(pairwise_rows) == 0L) NULL else dplyr::bind_rows(pairwise_rows)
   )
 }
 
@@ -611,11 +822,11 @@
 #' @param by_group Logical(1). When `x$derivatives` carries a non-`NULL`
 #'   `grp_vars` attribute, include `grp_vars` as a comparison factor
 #'   alongside/instead of AOI (default `TRUE`; see Details). Set to `FALSE`
-#'   to ignore `grp_vars` entirely: AOI-scope statistics get a pooled AOI
-#'   comparison, Stimulus-scope statistics get a plain descriptive summary
-#'   (no factor to compare).
-#' @param stats Character vector of base statistic names to test or `NULL`
-#'   (default) to test every statistic present.
+#'   to ignore `grp_vars` entirely: continuous AOI-scope and categorical
+#'   measures get a pooled AOI comparison, and continuous Stimulus-scope
+#'   measures get only a descriptive summary.
+#' @param stats Character vector of base measure names to test or `NULL`
+#'   (default) to test every valid measure present in `x$derivatives`.
 #' @param alpha Numeric(1). Significance level (e.g. `0.05` for 95% CIs).
 #' @param p_adjust_method Character(1). Passed to
 #'   [rstatix::pairwise_t_test()] for post-hoc steps. Defaults to
@@ -623,36 +834,50 @@
 #' @param ... Currently unused.
 #'
 #' @details
-#' Each statistic is routed by its AOI/Stimulus scope (see
-#' `mathpsychr:::.measure_taxonomy`):
-#' * **AOI-scope** (e.g. dwell time, fixation count):compared across AOI.
-#'   When `grp_vars` is present (and `by_group = TRUE`), `grp_vars[1]` enters
-#'   as a second factor yielding an AOI x group interaction test.
-#' * **Stimulus-scope** (e.g. switches, watch time, transitions; one value
-#'   per trial, not per AOI) compared across `grp_vars` (up to the first
-#'   two, in the order supplied) when present; reported as a global
-#'   descriptive mean/SD, with no test, when `grp_vars` is `NULL`.
+#' Each measure is routed by its AOI/Stimulus scope (see
+#' `mathpsychr:::.measure_taxonomy`). Categorical Stimulus-scope measures
+#' (`first`/`last_fixated_aoi`/`reference`; see
+#' `mathpsychr:::.categorical_measure_stats`) are first converted to
+#' per-identifier category proportions, at which point they are
+#' computation-steps-wise identical to an AOI-scope measure, and distinguished
+#' only by conceptually via `scope == "categorical"` for labelling:
+#' * **AOI-scope / categorical**: compared across AOI/category. When
+#'   `grp_vars` is present (and `by_group = TRUE`), `grp_vars[1]` enters as a
+#'   second factor, with an AOI/category x group interaction test.
+#' * **Stimulus-scope, continuous** (e.g. switches, watch time,
+#'   transitions; variables with one value per trial, not per AOI): compared
+#'   across `grp_vars` (up to the first two, in the order supplied).
 #'
-#' Within each branch, a single 2-level factor gets a paired/unpaired t-test
-#' (auto-detected via identifier nesting); anything with more levels, or two
-#' factors regardless of level counts gets an ANOVA with pairwise/simple-effects
-#' post-hoc.
+#' Within either branch, every factor gets an ANOVA with pairwise/simple-effects
+#' post-hoc. For factors with two levels, this is mathematically equivalent
+#' to getting a t-test only, without breaking the workflow logic.
 #'
-#' @returns An `mpr_gaze_measures_test` object, i.e., a list containing:
+#' A per-level descriptive summary (participant-level mean/SD of the
+#' magnitude for continuous statistics, or of the proportion for categorical)
+#' is always produced, independent of whether a test could run for that
+#' statistic.
+#'
+#' @returns An `mpr_gaze_measures_comparison` object, i.e., a list containing:
 #'   \describe{
-#'     \item{test_summary}{Tidy omnibus test result, one row per measure
-#'     (per factor combination tested).}
+#'     \item{test_summary}{Tidy omnibus test result (continuous and
+#'     categorical measures both included, distinguished by `scope`/
+#'     `test_type`). One row per measure (per factor combination tested).}
 #'     \item{pairwise_summary}{Tidy pairwise/simple-effects post-hoc
 #'     comparisons, or `NULL` if none were needed anywhere.}
-#'     \item{descriptive_summary}{Tidy global mean/SD for Stimulus-scope
-#'     statistics when `grp_vars` is `NULL`, or `NULL` otherwise.}
-#'     \item{avg_data}{Participant-level averaged input data, returned for
+#'     \item{descriptive_summary}{Tidy per-level descriptive statistics,
+#'     always populated for every measure tested.}
+#'     \item{avg_data}{Participant-level averaged input data. Returned for
 #'     inspection or custom operations.}
+#'     \item{cat_counts}{Participant-level category counts and proportions
+#'     (categorical mesures). The more granular/proximal artifact behind
+#'     `avg_data`'s categorical rows. Returned for inspection or custom
+#'     operations.}
 #'     \item{grp_vars}{Character containing the `grp_vars` actually
 #'     available for comparison, or `NULL`.}
 #'     \item{by_group}{Logical. The `by_group` argument used.}
 #'     \item{alpha}{Significance level used.}
-#'     \item{aois}{Character. AOI levels compared.}
+#'     \item{aois}{Character. AOI levels compared (true AOI-scope measures
+#'     only, categorical measures' levels are in `cat_counts$category`).}
 #'     \item{stats}{Character. Base name(s) of statistic(s) compared.}
 #'   }
 #'   Call [as_gt()] or [print()] on the result to render `{gt}` tables. Call
@@ -689,167 +914,34 @@ compute.mpr_gaze_measures <- function(
   stratify_vars <- if (isTRUE(by_group)) grp_vars else NULL
 
   stat_map <- .resolve_measure_stat_cols(derivatives, stats)
-  aoi_cols      <- rlang::set_names(stat_map$col[stat_map$scope == "aoi"], stat_map$stat[stat_map$scope == "aoi"])
+  aoi_cols <- rlang::set_names(stat_map$col[stat_map$scope == "aoi"], stat_map$stat[stat_map$scope == "aoi"])
   stimulus_cols <- rlang::set_names(stat_map$col[stat_map$scope == "stimulus"], stat_map$stat[stat_map$scope == "stimulus"])
+  categorical_cols <- rlang::set_names(stat_map$col[stat_map$scope == "categorical"], stat_map$stat[stat_map$scope == "categorical"])
 
-  avg_data <- .average_measures_participant(derivatives, id_cols, trial_cols, aoi_cols, stimulus_cols, stratify_vars)
-  results  <- .run_measure_tests(avg_data, id_cols, stratify_vars, alpha, p_adjust_method)
+  cat_counts <- .count_measures_participant(derivatives, id_cols, trial_cols, categorical_cols, stratify_vars)
+  cont_data <- .average_measures_participant(derivatives, id_cols, trial_cols, aoi_cols, stimulus_cols, stratify_vars)
+
+  avg_data <- dplyr::bind_rows(
+    cont_data,
+    .categorical_avg_from_counts(cat_counts, id_cols, stratify_vars)
+  )
+
+  results <- .run_measure_tests(avg_data, id_cols, stratify_vars, alpha, p_adjust_method)
+  descriptive_summary <- .describe_measure_levels(avg_data, stratify_vars)
 
   structure(
     list(
-      test_summary        = results$test_summary,
+      test_summary        = if (is.null(results$test_summary) || nrow(results$test_summary) == 0L) NULL else results$test_summary,
       pairwise_summary    = results$pairwise_summary,
-      descriptive_summary = results$descriptive_summary,
+      descriptive_summary = if (is.null(descriptive_summary) || nrow(descriptive_summary) == 0L) NULL else descriptive_summary,
       avg_data            = avg_data,
+      cat_counts          = cat_counts,
       grp_vars            = stratify_vars,
       by_group            = by_group,
       alpha               = alpha,
-      aois                = sort(unique(stats::na.omit(avg_data$aoi))),
+      aois                = sort(unique(stats::na.omit(avg_data$aoi[avg_data$scope == "aoi"]))),
       stats               = unique(stat_map$stat)
     ),
-    class = "mpr_gaze_measures_test"
+    class = "mpr_gaze_measures_comparison"
   )
-}
-
-
-#' Plot an `mpr_gaze_measures_test` result
-#'
-#' Per-AOI violin plot of the participant-level averaged data for one
-#' statistic, with the group mean and 95% CI overlaid. Faceted by
-#' `grp_vars` when the comparison was stratified.
-#'
-#' @param x An `mpr_gaze_measures_test` object, as returned by
-#'   [compute.mpr_gaze_measures()].
-#' @param stat Character(1). Base name of the measure to plot (one of
-#'   `x$stats`). Defaults to the first tested statistic, with a message.
-#' @param ... Currently unused.
-#'
-#' @returns A [ggplot2::ggplot()] object.
-#'
-#' @family eyetracking
-#'
-#' @export
-plot.mpr_gaze_measures_test <- function(x, stat = NULL, ...) {
-  avg_data <- x$avg_data
-  stat_candidates <- x$stats
-
-  if (is.null(stat)) {
-    stat <- stat_candidates[[1]]
-    cli::cli_inform("No `stat` supplied; defaulting to {.val {stat}}.")
-  }
-
-  actual_stat <- grep(paste0("^", stat, "(_[0-9.]+)?$"), unique(avg_data$measure), value = TRUE)
-  if (length(actual_stat) == 0L) {
-    cli::cli_abort(c(
-            "`stat` {.val {stat}} not found among tested statistics.",
-      "i" = "Available: {.val {stat_candidates}}."
-    ))
-  }
-  actual_stat <- actual_stat[1L]
-
-  grp_vars <- x$grp_vars
-  facet_by <- grp_vars
-  data <- dplyr::filter(avg_data, .data$measure == actual_stat)
-
-  summary_df <-
-    data |>
-    dplyr::group_by(dplyr::across(tidyselect::all_of(c(facet_by, "aoi")))) |>
-    dplyr::summarise(
-      m = mean(.data$mean, na.rm = TRUE),,
-      se = stats::sd(.data$mean, na.rm = TRUE) / sqrt(sum(!is.na(.data$mean))),
-      .groups = "drop"
-    ) |>
-    dplyr::mutate(
-      ci_low  = .data$m - stats::qnorm(0.975) * .data$se,
-      ci_high = .data$m + stats::qnorm(0.975) * .data$se
-    )
-
-  p <-
-    ggplot2::ggplot(
-      data,
-      ggplot2::aes(x = .data$aoi, y = .data$mean)
-    ) +
-    ggplot2::geom_violin(
-      fill = "grey85",
-      colour = "grey60",
-      alpha = 0.6,
-      trim = FALSE
-    ) +
-    ggplot2::geom_pointrange(
-      data = summary_df,
-      ggplot2::aes(
-        x = .data$aoi,
-        y = .data$m,
-        ymin = .data$ci_low,
-        ymax = .data$ci_high
-      ),
-      colour = "#C0392B",
-      linewidth = 0.8,
-      fatten = 3
-    ) +
-    ggplot2::labs(
-      x = "AOI",
-      y = actual_stat,
-      title = actual_stat
-    ) +
-    .et_cascade_theme()
-
-  if (!is.null(facet_by)) {
-    p <- p + ggplot2::facet_wrap(ggplot2::vars(!!!rlang::syms(facet_by)))
-  }
-
-  p
-}
-
-
-#' Render an `mpr_gaze_measures_test` result as a `{gt}` table
-#'
-#' @param x An `mpr_gaze_measures_test` object.
-#' @param which Character(1). `"test"` (default) for the omnibus test
-#'   summary, or `"pairwise"` for the post-hoc pairwise comparisons (errors
-#'   informatively if `NULL`, i.e. no statistic had more than two AOI
-#'   levels).
-#' @param ... Currently unused.
-#'
-#' @returns A `{gt}` table object.
-#'
-#' @family eyetracking
-#'
-#' @export
-as_gt.mpr_gaze_measures_test <- function(x, which = c("test", "pairwise"), ...) {
-  which <- match.arg(which)
-
-  tbl <- if (which == "test") {
-    x$test_summary
-  } else {
-    if (is.null(x$pairwise_summary)) {
-      cli::cli_abort(c(
-        "No pairwise comparisons available.",
-        "i" = "Every tested statistic had exactly two AOI levels (paired t-test only)."
-      ))
-    }
-    x$pairwise_summary
-  }
-
-  title <- if (which == "test") {
-    "Group-mean comparisons across AOIs"
-  } else {
-    "Pairwise post-hoc comparisons across AOIs"
-  }
-
-  gt::gt(tbl) |>
-    gt::tab_header(title = title) |>
-    gt::fmt_number(columns = tidyselect::where(is.numeric), decimals = 3) |>
-    gt::cols_width(tidyselect::everything() ~ gt::px(110)) |>
-    gt::tab_options(table.width = gt::px(110L * ncol(tbl)))
-}
-
-
-#' @describeIn as_gt.mpr_gaze_measures_test Print method (console use); calls
-#'   [as_gt()] with `which = "test"`.
-#'
-#' @export
-print.mpr_gaze_measures_test <- function(x, ...) {
-  print(as_gt(x, which = "test"))
-  invisible(x)
 }

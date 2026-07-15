@@ -50,12 +50,12 @@ or \code{mpr_gaze_cascade}).}
 \item{by_group}{Logical(1). When \code{x$derivatives} carries a non-\code{NULL}
 \code{grp_vars} attribute, include \code{grp_vars} as a comparison factor
 alongside/instead of AOI (default \code{TRUE}; see Details). Set to \code{FALSE}
-to ignore \code{grp_vars} entirely: AOI-scope statistics get a pooled AOI
-comparison, Stimulus-scope statistics get a plain descriptive summary
-(no factor to compare).}
+to ignore \code{grp_vars} entirely: continuous AOI-scope and categorical
+measures get a pooled AOI comparison, and continuous Stimulus-scope
+measures get only a descriptive summary.}
 
-\item{stats}{Character vector of base statistic names to test or \code{NULL}
-(default) to test every statistic present.}
+\item{stats}{Character vector of base measure names to test or \code{NULL}
+(default) to test every valid measure present in \code{x$derivatives}.}
 
 \item{p_adjust_method}{Character(1). Passed to
 \code{\link[rstatix:t_test]{rstatix::pairwise_t_test()}} for post-hoc steps. Defaults to
@@ -79,21 +79,27 @@ Call \code{\link[=as_gt]{as_gt()}} or \code{\link[=print]{print()}} on the resul
 \code{\link[=as_gt]{as_gt()}} explicitly in R Markdown/vignette chunks; \code{\link[=print]{print()}} is for
 interactive console use.
 
-An \code{mpr_gaze_measures_test} object, i.e., a list containing:
+An \code{mpr_gaze_measures_comparison} object, i.e., a list containing:
 \describe{
-\item{test_summary}{Tidy omnibus test result, one row per measure
-(per factor combination tested).}
+\item{test_summary}{Tidy omnibus test result (continuous and
+categorical measures both included, distinguished by \code{scope}/
+\code{test_type}). One row per measure (per factor combination tested).}
 \item{pairwise_summary}{Tidy pairwise/simple-effects post-hoc
 comparisons, or \code{NULL} if none were needed anywhere.}
-\item{descriptive_summary}{Tidy global mean/SD for Stimulus-scope
-statistics when \code{grp_vars} is \code{NULL}, or \code{NULL} otherwise.}
-\item{avg_data}{Participant-level averaged input data, returned for
+\item{descriptive_summary}{Tidy per-level descriptive statistics,
+always populated for every measure tested.}
+\item{avg_data}{Participant-level averaged input data. Returned for
 inspection or custom operations.}
+\item{cat_counts}{Participant-level category counts and proportions
+(categorical mesures). The more granular/proximal artifact behind
+\code{avg_data}'s categorical rows. Returned for inspection or custom
+operations.}
 \item{grp_vars}{Character containing the \code{grp_vars} actually
 available for comparison, or \code{NULL}.}
 \item{by_group}{Logical. The \code{by_group} argument used.}
 \item{alpha}{Significance level used.}
-\item{aois}{Character. AOI levels compared.}
+\item{aois}{Character. AOI levels compared (true AOI-scope measures
+only, categorical measures' levels are in \code{cat_counts$category}).}
 \item{stats}{Character. Base name(s) of statistic(s) compared.}
 }
 Call \code{\link[=as_gt]{as_gt()}} or \code{\link[=print]{print()}} on the result to render \code{{gt}} tables. Call
@@ -112,22 +118,30 @@ and returns the results in whatever form is natural for it. See the
 subclass-specific sections below for exact return shapes.
 }
 \details{
-Each statistic is routed by its AOI/Stimulus scope (see
-\code{mathpsychr:::.measure_taxonomy}):
+Each measure is routed by its AOI/Stimulus scope (see
+\code{mathpsychr:::.measure_taxonomy}). Categorical Stimulus-scope measures
+(\code{first}/\code{last_fixated_aoi}/\code{reference}; see
+\code{mathpsychr:::.categorical_measure_stats}) are first converted to
+per-identifier category proportions, at which point they are
+computation-steps-wise identical to an AOI-scope measure, and distinguished
+only by conceptually via \code{scope == "categorical"} for labelling:
 \itemize{
-\item \strong{AOI-scope} (e.g. dwell time, fixation count):compared across AOI.
-When \code{grp_vars} is present (and \code{by_group = TRUE}), \code{grp_vars[1]} enters
-as a second factor yielding an AOI x group interaction test.
-\item \strong{Stimulus-scope} (e.g. switches, watch time, transitions; one value
-per trial, not per AOI) compared across \code{grp_vars} (up to the first
-two, in the order supplied) when present; reported as a global
-descriptive mean/SD, with no test, when \code{grp_vars} is \code{NULL}.
+\item \strong{AOI-scope / categorical}: compared across AOI/category. When
+\code{grp_vars} is present (and \code{by_group = TRUE}), \code{grp_vars[1]} enters as a
+second factor, with an AOI/category x group interaction test.
+\item \strong{Stimulus-scope, continuous} (e.g. switches, watch time,
+transitions; variables with one value per trial, not per AOI): compared
+across \code{grp_vars} (up to the first two, in the order supplied).
 }
 
-Within each branch, a single 2-level factor gets a paired/unpaired t-test
-(auto-detected via identifier nesting); anything with more levels, or two
-factors regardless of level counts gets an ANOVA with pairwise/simple-effects
-post-hoc.
+Within either branch, every factor gets an ANOVA with pairwise/simple-effects
+post-hoc. For factors with two levels, this is mathematically equivalent
+to getting a t-test only, without breaking the workflow logic.
+
+A per-level descriptive summary (participant-level mean/SD of the
+magnitude for continuous statistics, or of the proportion for categorical)
+is always produced, independent of whether a test could run for that
+statistic.
 }
 \section{Methods (by class)}{
 \itemize{

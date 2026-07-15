@@ -306,3 +306,56 @@ as.data.frame.mpr_eyetracking <- function(x, ...) {
   }
   as.data.frame(x$derivatives)
 }
+
+
+#' Render an `mpr_gaze_measures_comparison` result as a `{gt}` table
+#'
+#' @param x An `mpr_gaze_measures_comparison` object.
+#' @param which Character(1). `"test"` (default) for the omnibus test
+#'   summary, or `"pairwise"` for the post-hoc pairwise comparisons (errors
+#'   informatively if `NULL`, i.e. no statistic had more than two AOI
+#'   levels).
+#' @param ... Currently unused.
+#'
+#' @returns A `{gt}` table object.
+#'
+#' @family eyetracking
+#'
+#' @export
+as_gt.mpr_gaze_measures_comparison <- function(x, which = c("test", "pairwise"), ...) {
+  which <- match.arg(which)
+
+  tbl <- if (which == "test") {
+    x$test_summary
+  } else {
+    if (is.null(x$pairwise_summary)) {
+      cli::cli_abort(c(
+        "No pairwise comparisons available.",
+        "i" = "Every tested statistic had exactly two AOI levels (paired t-test only)."
+      ))
+    }
+    x$pairwise_summary
+  }
+
+  title <- if (which == "test") {
+    "Group-mean comparisons across AOIs"
+  } else {
+    "Pairwise post-hoc comparisons across AOIs"
+  }
+
+  gt::gt(tbl) |>
+    gt::tab_header(title = title) |>
+    gt::fmt_number(columns = tidyselect::where(is.numeric), decimals = 3) |>
+    gt::cols_width(tidyselect::everything() ~ gt::px(110)) |>
+    gt::tab_options(table.width = gt::px(110L * ncol(tbl)))
+}
+
+
+#' @describeIn as_gt.mpr_gaze_measures_comparison Print method (console use); calls
+#'   [as_gt()] with `which = "test"`.
+#'
+#' @export
+print.mpr_gaze_measures_comparison <- function(x, ...) {
+  print(as_gt(x, which = "test"))
+  invisible(x)
+}
