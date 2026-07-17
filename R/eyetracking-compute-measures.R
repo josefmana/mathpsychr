@@ -817,6 +817,160 @@
 }
 
 
+#' Join two statistics' participant-level averages and resolve their
+#' facet/colour grouping candidates
+#'
+#' Shared by [.compute_measure_correlation()] here and
+#' [.plot_measures_scatter()] in `eyetracking-plot-measures.R`, which calls
+#' this function directly. Joins on identifier (+ `grp_vars`, + `aoi` when
+#' *both* statistics are AOI-scope/categorical), then resolves up to two
+#' facet/colour candidates: AOI (whenever either statistic is
+#' AOI-scope/categorical) folded in ahead of `grp_vars`, truncated via
+#' [.select_grp_vars()].
+#'
+#' @param avg_data `compute.mpr_gaze_measures()`'s `avg_data`.
+#' @param id_cols,grp_vars Character (`grp_vars` or `NULL`).
+#' @param stat_x,stat_y Character(1) each. Base statistic names.
+#'
+#' @returns A list with `joined` (data.frame with `x_value`/`x_std`/`x_n`,
+#'   `y_value`/`y_std`/`y_n`, and, when applicable, `aoi` and `grp_vars`
+#'   columns) and `group_cols` (character(0), (1), or (2): the columns
+#'   actually used for facet/colour grouping).
+#'
+#' @noRd
+.join_measure_pair <- function(avg_data, id_cols, grp_vars, stat_x, stat_y) {
+  aoi_like <- c("aoi", "categorical")
+
+  d1 <- avg_data |>
+    dplyr::filter(.data$measure == stat_x) |>
+    dplyr::select(
+      tidyselect::all_of(c(id_cols, grp_vars)),
+      x_aoi = "aoi",
+      x_value = "avg_value",
+      x_std = "std",
+      x_n = "n"
+    )
+
+  d2 <- avg_data |>
+    dplyr::filter(.data$measure == stat_y) |>
+    dplyr::select(
+      tidyselect::all_of(c(id_cols, grp_vars)),
+      y_aoi = "aoi",
+      y_value = "avg_value",
+      y_std = "std",
+      y_n = "n"
+    )
+
+  scope_x <- unique(dplyr::filter(avg_data, .data$measure == stat_x)$scope)[[1L]]
+  scope_y <- unique(dplyr::filter(avg_data, .data$measure == stat_y)$scope)[[1L]]
+
+  both_aoi_like  <- scope_x %in% aoi_like && scope_y %in% aoi_like
+  aoi_applicable <- scope_x %in% aoi_like || scope_y %in% aoi_like
+
+  join_cols <- c(id_cols, grp_vars)
+  if (both_aoi_like) {
+    d1 <- dplyr::rename(d1, aoi = "x_aoi")
+    d2 <- dplyr::rename(d2, aoi = "y_aoi")
+    join_cols <- c(join_cols, "aoi")
+  }
+
+  joined <- dplyr::inner_join(d1, d2, by = join_cols)
+
+  if (!both_aoi_like && aoi_applicable) {
+    joined$aoi <- if (scope_x %in% aoi_like) joined$x_aoi else joined$y_aoi
+  }
+
+  candidates <- character(0)
+  if (aoi_applicable) candidates <- c(candidates, "aoi")
+  if (!is.null(grp_vars)) candidates <- c(candidates, grp_vars)
+  group_cols <- .select_grp_vars(candidates, 2L)
+
+  list(joined = joined, group_cols = group_cols)
+}
+
+
+#' Participant-level correlation between two statistics, per facet/colour
+#' group
+#'
+#' @param avg_data,id_cols,grp_vars,stat_x,stat_y See [.join_measure_pair()].
+#'
+#' @returns A tibble with `stat_x`, `stat_y`, `group1_var`/`group1_level`,
+#'   `group2_var`/`group2_level` (`NA` when fewer than 1/2 grouping
+#'   candidates applied), `r`, `n`, `p_value`. Fixed, uniform column names
+#'   regardless of which actual `grp_vars`/AOI columns a given pair used,
+#'   so rows for different pairs (potentially using different grouping
+#'   columns) can be row-bound into one `correlation_summary` table.
+#'
+#' @noRd
+.compute_measure_correlation <- function(
+    avg_data, id_cols, grp_vars, stat_x, stat_y
+) {
+  pair <- .join_measure_pair(avg_data, id_cols, grp_vars, stat_x, stat_y)
+  joined <- pair$joined
+  group_cols <- pair$group_cols
+  group1 <- if (length(group_cols) >= 1L) group_cols[[1L]] else NULL
+  group2 <- if (length(group_cols) >= 2L) group_cols[[2L]] else NULL
+
+  .cor_one <- function(d) {
+    ct <- suppressWarnings(stats::cor.test(d$x_value, d$y_value))
+    tibble::tibble(
+      r = unname(ct$estimate),
+      n = sum(stats::complete.cases(d$x_value, d$y_value)),
+      p_value = ct$p.value
+    )
+  }
+
+  result <- if (length(group_cols) == 0L) {
+    .cor_one(joined)
+  } else {
+    joined |>
+      dplyr::group_by(dplyr::across(tidyselect::all_of(group_cols))) |>
+      dplyr::group_modify(~ .cor_one(.x)) |>
+      dplyr::ungroup()
+  }
+
+  result$group1_var   <- if (is.null(group1)) NA_character_ else group1
+  result$group1_level <- if (is.null(group1)) NA_character_ else as.character(result[[group1]])
+  result$group2_var   <- if (is.null(group2)) NA_character_ else group2
+  result$group2_level <- if (is.null(group2)) NA_character_ else as.character(result[[group2]])
+
+  result <- dplyr::select(result, -tidyselect::any_of(group_cols))
+  tibble::add_column(result, stat_x = stat_x, stat_y = stat_y, .before = 1L)
+}
+
+
+#' Full pairwise correlation matrix
+#'
+#' Every *unique unordered* pair of `stats` (`utils::combn(stats, 2)`;
+#' self-pairs excluded). One [.compute_measure_correlation()] call per pair,
+#' row-bound into a single long tibble: one row per (`stat_x`, `stat_y`,
+#' facet/colour group) combination, so `dplyr`/`tidyr` can filter, pivot, or
+#' join it downstream without special-casing, but the full table stays on
+#' `x$correlation_summary` for direct inspection.
+#'
+#' @param avg_data `compute.mpr_gaze_measures()`'s `avg_data`.
+#' @param id_cols,grp_vars Character (`grp_vars` or `NULL`).
+#' @param stats Character. Base statistic names to correlate, pairwise.
+#'
+#' @returns A tibble (`dplyr::bind_rows()` of every pair's
+#'   [.compute_measure_correlation()] output), or `NULL` if `stats` has
+#'   fewer than two elements.
+#'
+#' @noRd
+.compute_measure_correlations <- function(avg_data, id_cols, grp_vars, stats) {
+  stats <- unique(stats)
+  if (length(stats) < 2L) {
+    return(NULL)
+  }
+
+  pairs <- utils::combn(stats, 2L, simplify = FALSE)
+  dplyr::bind_rows(lapply(pairs, function(pair) {
+    .compute_measure_correlation(avg_data, id_cols, grp_vars, pair[[1L]], pair[[2L]])
+  }))
+}
+
+
+
 #' @describeIn compute Method for `mpr_gaze_measures` objects.
 #'
 #' @param by_group Logical(1). When `x$derivatives` carries a non-`NULL`
@@ -831,6 +985,11 @@
 #' @param p_adjust_method Character(1). Passed to
 #'   [rstatix::pairwise_t_test()] for post-hoc steps. Defaults to
 #'   `"bonferroni"`.
+#' @param correlate Logical(1). Default `FALSE`. When `TRUE`, additionally
+#'   compute a full pairwise correlation matrix (per group, participant-level)
+#'   across every tested statistic, for later use by
+#'   `plot.mpr_gaze_measures_comparison(type = "scatter")` (and for direct
+#'   inspection via `x$correlation_summary`).
 #' @param ... Currently unused.
 #'
 #' @details
@@ -866,6 +1025,9 @@
 #'     comparisons, or `NULL` if none were needed anywhere.}
 #'     \item{descriptive_summary}{Tidy per-level descriptive statistics,
 #'     always populated for every measure tested.}
+#'     \item{correlation_summary}{Tidy/long full pairwise correlation
+#'     matrix (one row per statistic pair x group), or `NULL` if
+#'     `correlate = FALSE` (the default)}.
 #'     \item{avg_data}{Participant-level averaged input data. Returned for
 #'     inspection or custom operations.}
 #'     \item{cat_counts}{Participant-level category counts and proportions
@@ -878,7 +1040,8 @@
 #'     \item{alpha}{Significance level used.}
 #'     \item{aois}{Character. AOI levels compared (true AOI-scope measures
 #'     only, categorical measures' levels are in `cat_counts$category`).}
-#'     \item{stats}{Character. Base name(s) of statistic(s) compared.}
+#'     \item{stats}{Character. Base name(s) of measures(s) compared.}
+#'
 #'   }
 #'   Call [as_gt()] or [print()] on the result to render `{gt}` tables. Call
 #'   [as_gt()] explicitly in R Markdown/vignette chunks; [print()] is for
@@ -891,6 +1054,7 @@ compute.mpr_gaze_measures <- function(
     stats = NULL,
     alpha = 0.05,
     p_adjust_method = "bonferroni",
+    correlate = FALSE,
     ...
 ) {
   derivatives <- x$derivatives
@@ -908,9 +1072,9 @@ compute.mpr_gaze_measures <- function(
     ))
   }
 
-  id_cols    <- attr(derivatives, "id_cols")
+  id_cols <- attr(derivatives, "id_cols")
   trial_cols <- attr(derivatives, "trial_cols")
-  grp_vars   <- attr(derivatives, "grp_vars")
+  grp_vars <- attr(derivatives, "grp_vars")
   stratify_vars <- if (isTRUE(by_group)) grp_vars else NULL
 
   stat_map <- .resolve_measure_stat_cols(derivatives, stats)
@@ -929,11 +1093,30 @@ compute.mpr_gaze_measures <- function(
   results <- .run_measure_tests(avg_data, id_cols, stratify_vars, alpha, p_adjust_method)
   descriptive_summary <- .describe_measure_levels(avg_data, stratify_vars)
 
+  correlation_summary <- if (isTRUE(correlate)) {
+    .compute_measure_correlations(avg_data, id_cols, stratify_vars, unique(stat_map$stat))
+  } else {
+    NULL
+  }
+
+  test_summary <- if (is.null(results$test_summary) || nrow(results$test_summary) == 0L) {
+    NULL
+  } else {
+    results$test_summary
+  }
+
+  descriptive_summary <- if (is.null(descriptive_summary) || nrow(descriptive_summary) == 0L) {
+    NULL
+  } else {
+    descriptive_summary
+  }
+
   structure(
     list(
-      test_summary        = if (is.null(results$test_summary) || nrow(results$test_summary) == 0L) NULL else results$test_summary,
+      test_summary        = test_summary,
       pairwise_summary    = results$pairwise_summary,
-      descriptive_summary = if (is.null(descriptive_summary) || nrow(descriptive_summary) == 0L) NULL else descriptive_summary,
+      descriptive_summary = descriptive_summary,
+      correlation_summary = correlation_summary,
       avg_data            = avg_data,
       cat_counts          = cat_counts,
       grp_vars            = stratify_vars,

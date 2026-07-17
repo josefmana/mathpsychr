@@ -24,6 +24,7 @@
   stats = NULL,
   alpha = 0.05,
   p_adjust_method = "bonferroni",
+  correlate = FALSE,
   ...
 )
 
@@ -60,6 +61,12 @@ measures get only a descriptive summary.}
 \item{p_adjust_method}{Character(1). Passed to
 \code{\link[rstatix:t_test]{rstatix::pairwise_t_test()}} for post-hoc steps. Defaults to
 \code{"bonferroni"}.}
+
+\item{correlate}{Logical(1). Default \code{FALSE}. When \code{TRUE}, additionally
+compute a full pairwise correlation matrix (per group, participant-level)
+across every tested statistic, for later use by
+\code{plot.mpr_gaze_measures_comparison(type = "scatter")} (and for direct
+inspection via \code{x$correlation_summary}).}
 }
 \value{
 An \code{mpr_cascade_fit} object, i.e., a list containing:
@@ -88,6 +95,9 @@ categorical measures both included, distinguished by \code{scope}/
 comparisons, or \code{NULL} if none were needed anywhere.}
 \item{descriptive_summary}{Tidy per-level descriptive statistics,
 always populated for every measure tested.}
+\item{correlation_summary}{Tidy/long full pairwise correlation
+matrix (one row per statistic pair x group), or \code{NULL} if
+\code{correlate = FALSE} (the default)}.
 \item{avg_data}{Participant-level averaged input data. Returned for
 inspection or custom operations.}
 \item{cat_counts}{Participant-level category counts and proportions
@@ -100,7 +110,8 @@ available for comparison, or \code{NULL}.}
 \item{alpha}{Significance level used.}
 \item{aois}{Character. AOI levels compared (true AOI-scope measures
 only, categorical measures' levels are in \code{cat_counts$category}).}
-\item{stats}{Character. Base name(s) of statistic(s) compared.}
+\item{stats}{Character. Base name(s) of measures(s) compared.}
+
 }
 Call \code{\link[=as_gt]{as_gt()}} or \code{\link[=print]{print()}} on the result to render \code{{gt}} tables. Call
 \code{\link[=as_gt]{as_gt()}} explicitly in R Markdown/vignette chunks; \code{\link[=print]{print()}} is for
