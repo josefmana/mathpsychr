@@ -4,24 +4,69 @@
 \alias{plot.mpr_gaze_measures_comparison}
 \title{Plot an \code{mpr_gaze_measures_comparison} result}
 \usage{
-\method{plot}{mpr_gaze_measures_comparison}(x, stat = NULL, ...)
+\method{plot}{mpr_gaze_measures_comparison}(
+  x,
+  type = c("violin", "scatter"),
+  stats = NULL,
+  precision = c("se", "sd"),
+  stimulus_by = c("colour", "facet"),
+  scope = c("aoi", "categorical", "stimulus"),
+  ...
+)
 }
 \arguments{
 \item{x}{An \code{mpr_gaze_measures_comparison} object, as returned by
 \code{\link[=compute.mpr_gaze_measures]{compute.mpr_gaze_measures()}}.}
 
-\item{stat}{Character(1). Base name of the measure to plot (one of
-\code{x$stats}). Defaults to the first tested statistic, with a message.}
+\item{type}{Character(1). \code{"violin"} (default) or \code{"scatter"}.}
+
+\item{stats}{Character. For \code{type = "violin"}, an optional subset of
+statistics to facet over (defaults to every statistic in \code{x$stats}). For
+\code{type = "scatter"}, exactly two statistics (required).}
+
+\item{precision}{Character(1). \code{type = "scatter"} only: \code{"se"} (default,
+whisker half-width \code{std / sqrt(n)}) or \code{"sd"} (half-width \code{std}).
+Ignored for \code{type = "violin"}.}
+
+\item{stimulus_by}{Character(1). \code{type = "violin"} only: \code{"colour"}
+(default) or \code{"facet"} for Stimulus-scope measures' second \code{grp_vars}
+column, when present. When AOI-scope/categorical and Stimulus-scope
+measures are plotted together, the latter's \emph{first} \code{grp_vars} column is
+used this way instead (and \code{grp_vars[1L]} becomes its x-axis) so "colour"
+means the same variable in both panels. Ignored for \code{type = "scatter"}.}
+
+\item{scope}{Character. \code{type = "violin"} only: one or more of \code{"aoi"},
+\code{"categorical"}, \code{"stimulus"} (default: all three). Only takes effect
+when \code{stats} is \code{NULL}. Narrows the default statistic selection to
+the requested scope(s) without having to name statistics individually
+(e.g. \code{scope = "aoi"} for every AOI-scope statistic). Ignored when
+\code{stats} is supplied explicitly, or for \code{type = "scatter"}.}
 
 \item{...}{Currently unused.}
 }
 \value{
-A \code{\link[ggplot2:ggplot]{ggplot2::ggplot()}} object.
+A \code{\link[ggplot2:ggplot]{ggplot2::ggplot()}} object, or a \code{patchwork} object.
 }
 \description{
-Per-AOI violin plot of the participant-level averaged data for one
-statistic, with the group mean and 95\% CI overlaid. Faceted by
-\code{grp_vars} when the comparison was stratified.
+Plot recording-level average eye-tracking measures data distributions.
+}
+\details{
+Two plot types, selected via \code{type}:
+\itemize{
+\item \code{"violin"} (default): a violin + mean/95\% CI plot of participant-level
+averages, faceted by measure, for every statistic in \code{x$stats} (or a
+\code{stats} subset, or every statistic in one or more \code{scope} buckets).
+\item \code{"scatter"}: a participant-level scatter plot of exactly two measures
+(\code{stats}, required, any scope), with per-axis precision whiskers and an
+unweighted correlation line/estimate. \code{x} must have been \code{compute()}d with
+\code{correlate = TRUE}.
+}
+
+\code{grp_vars} truncation is never recomputed from scratch here, so a plot
+cannot show a grouping variable that was silently dropped from the
+underlying test: \code{type = "violin"} reads the truncated column back off
+\code{x$descriptive_summary}'s own schema, and \code{type = "scatter"} re-derives it
+internally.
 }
 \seealso{
 Other eyetracking: 

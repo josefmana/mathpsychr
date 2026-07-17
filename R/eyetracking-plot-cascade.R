@@ -625,7 +625,7 @@ plot.mpr_gaze_cascade <- function(
     x,
     show_clusters  = TRUE,
     show_grand_avg = TRUE,
-    fit_type     = c("sigmoid", "piecewise", "both", "none"),
+    fit_type       = c("sigmoid", "piecewise", "both", "none"),
     ...
 ) {
   # --- Preconditions ----------------------------------------------------------

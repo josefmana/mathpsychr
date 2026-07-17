@@ -6,6 +6,6 @@
 "_PACKAGE"
 
 ## usethis namespace: start
-#' @importFrom rlang .data :=
+#' @importFrom rlang .data .env :=
 #' @importFrom stats as.formula na.omit qnorm pnorm dnorm qt rt
 NULL
