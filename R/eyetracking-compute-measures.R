@@ -415,21 +415,12 @@
 
 
 #' Trim `grp_vars` to at most `max_n`, warning if truncated
-#'
-#' With more than the supported number of `grp_vars`, uses the first `max_n`
-#' (in the order supplied) and informs the user.
-#'
 #' @noRd
 .select_grp_vars <- function(grp_vars, max_n) {
   if (is.null(grp_vars) || length(grp_vars) <= max_n) {
     return(grp_vars)
   }
   used <- grp_vars[seq_len(max_n)]
-  cli::cli_warn(c(
-    "!" = "More `grp_vars` supplied than this comparison can use ({.val {grp_vars}}).",
-    "i" = "Using the first {max_n}: {.val {used}}.",
-    "i" = "Reorder `grp_vars` (in `process()`) if you want different variables included."
-  ))
   used
 }
 
@@ -788,7 +779,7 @@
     keys_df <- dplyr::group_keys(grouped)
     chunks  <- dplyr::group_split(grouped)
 
-    for (i in seq_len(nrow(keys_df))) {
+    for (i in cli::cli_progress_along(seq_len(nrow(keys_df)), "Testing AOI-scope/categorical measures")) {
       chunk <- chunks[[i]]
       chunk$aoi_lvl <- chunk$aoi
       result <- .test_one_group_comparison(chunk, keys_df$measure[i], id_cols, c("aoi_lvl", aoi_grp), alpha, p_adjust_method)
@@ -804,7 +795,7 @@
     keys_df <- dplyr::group_keys(grouped)
     chunks  <- dplyr::group_split(grouped)
 
-    for (i in seq_len(nrow(keys_df))) {
+    for (i in cli::cli_progress_along(seq_len(nrow(keys_df)), "Testing Stimulus-scope measures")) {
       result  <- .test_one_group_comparison(chunks[[i]], keys_df$measure[i], id_cols, stim_grp, alpha, p_adjust_method)
       .add_result(result, keys_df[i, "measure", drop = FALSE], "stimulus")
     }
@@ -964,11 +955,11 @@
   }
 
   pairs <- utils::combn(stats, 2L, simplify = FALSE)
-  dplyr::bind_rows(lapply(pairs, function(pair) {
+  dplyr::bind_rows(lapply(cli::cli_progress_along(pairs, "Computing pairwise measure correlations"), function(i) {
+    pair <- pairs[[i]]
     .compute_measure_correlation(avg_data, id_cols, grp_vars, pair[[1L]], pair[[2L]])
   }))
 }
-
 
 
 #' @describeIn compute Method for `mpr_gaze_measures` objects.
