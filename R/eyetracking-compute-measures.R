@@ -629,6 +629,26 @@
     ) |>
     dplyr::ungroup()
 
+  effect <-
+    d |>
+    dplyr::group_by(dplyr::across(tidyselect::all_of(f2))) |>
+    rstatix::cohens_d(
+      stats::as.formula(paste("avg_value ~", f1)),
+      paired = f1 %in% within_factors,
+      ci = TRUE,
+      conf.level = 1 - alpha
+    ) |>
+    dplyr::ungroup() |>
+    dplyr::mutate(
+      cohens_d           = .data$effsize,
+      cohens_d_magnitude = .data$magnitude,
+      cohens_d_conf_low  = .data$conf.low,
+      cohens_d_conf_high = .data$conf.high,
+      .keep = "none"
+    )
+
+  pairwise <- dplyr::bind_cols(pairwise, effect)
+
   list(test_type = test_type, test = test, pairwise = pairwise)
 }
 

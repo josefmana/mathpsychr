@@ -109,9 +109,8 @@ available for comparison, or \code{NULL}.}
 \item{by_group}{Logical. The \code{by_group} argument used.}
 \item{alpha}{Significance level used.}
 \item{p_adjust_method}{Character(1). The \code{p_adjust_method} argument
-used for post-hoc steps. Carried on the object (rather than only as a
-column in \code{pairwise_summary}) so \code{\link[=as_gt]{as_gt()}} can cite it in a table
-footnote even when \code{pairwise_summary} is \code{NULL}.}
+used for post-hoc steps. Carried on the object so \code{\link[=as_gt]{as_gt()}} can cite it
+in a table footnote even when \code{pairwise_summary} is \code{NULL}.}
 \item{aois}{Character. AOI levels compared (true AOI-scope measures
 only, categorical measures' levels are in \code{cat_counts$category}).}
 \item{stats}{Character. Base name(s) of measures(s) compared.}
