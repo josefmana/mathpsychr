@@ -687,38 +687,6 @@
 }
 
 
-#' Per-level descriptive statistics (count/proportion) for categorical
-#' measures
-#'
-#' The categorical analogue of [.describe_measure_levels()]: a category x
-#' `grp_vars[1]` (or overall, when `grp_vars` is `NULL`) count/proportion
-#' table, always produced independent of whether a chi-square test ran.
-#'
-#' @param cat_counts Output of [.count_measures_participant()], or `NULL`.
-#' @param stratify_vars Character or `NULL`.
-#'
-#' @returns A tibble with `measure`, `scope`, the `grp_vars[1]` column (when
-#'   present), `category`, `n`, `proportion`. `NULL` if `cat_counts` is
-#'   `NULL`/empty.
-#'
-#' @noRd
-.describe_categorical_levels <- function(cat_counts, stratify_vars) {
-  if (is.null(cat_counts) || nrow(cat_counts) == 0L) {
-    return(NULL)
-  }
-
-  grp <- .select_grp_vars(stratify_vars, 1L)
-  grp_cols <- if (is.null(grp)) character(0L) else grp
-
-  cat_counts |>
-    dplyr::group_by(dplyr::across(tidyselect::all_of(c("measure", grp_cols, "category")))) |>
-    dplyr::summarise(n = sum(.data$n), .groups = "drop_last") |>
-    dplyr::mutate(proportion = .data$n / sum(.data$n)) |>
-    dplyr::ungroup() |>
-    dplyr::mutate(scope = "categorical", .after = "measure")
-}
-
-
 #' Run group-mean comparisons for every continuous measure, within every scope
 #'
 #' Thin looping orchestrator around [.test_one_group_comparison()]. AOI-scope
@@ -1029,6 +997,9 @@
 #'     available for comparison, or `NULL`.}
 #'     \item{by_group}{Logical. The `by_group` argument used.}
 #'     \item{alpha}{Significance level used.}
+#'     \item{p_adjust_method}{Character(1). The `p_adjust_method` argument
+#'     used for post-hoc steps. Carried on the object so [as_gt()] can cite it
+#'     in a table footnote even when `pairwise_summary` is `NULL`.}
 #'     \item{aois}{Character. AOI levels compared (true AOI-scope measures
 #'     only, categorical measures' levels are in `cat_counts$category`).}
 #'     \item{stats}{Character. Base name(s) of measures(s) compared.}
@@ -1113,6 +1084,7 @@ compute.mpr_gaze_measures <- function(
       grp_vars            = stratify_vars,
       by_group            = by_group,
       alpha               = alpha,
+      p_adjust_method     = p_adjust_method,
       aois                = sort(unique(stats::na.omit(avg_data$aoi[avg_data$scope == "aoi"]))),
       stats               = unique(stat_map$stat)
     ),
