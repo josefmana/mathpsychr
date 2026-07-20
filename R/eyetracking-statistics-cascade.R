@@ -220,9 +220,9 @@
     model_formula = y ~ .piecewise_linear(time, L, t0, slope),
     ss_formula = NULL,
     remap = \(cf) c(
-      L = unname(cf[["a"]]),
-      t0 = unname(cf[["xs"]]),
-      slope = unname(cf[["b"]])
+      L = unname(cf[["L"]]),
+      t0 = unname(cf[["t0"]]),
+      slope = unname(cf[["slope"]])
     ),
     fallback = c(L = 0.5, t0 = mean(t_rng), slope = 0.3),
     predict_fn = \(time, p) .piecewise_linear(

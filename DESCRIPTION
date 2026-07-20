@@ -15,6 +15,7 @@ Imports:
     eyelinker,
     ggdag,
     ggplot2,
+    ggh4x,
     glue,
     grid,
     gt,
