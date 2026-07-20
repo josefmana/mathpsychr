@@ -26,13 +26,121 @@
 }
 
 
+#' Coefficient of determination via the sum-of-squares definition
+#'
+#' @param y Numeric. Observed values.
+#' @param fitted Numeric. Fitted values, same length.
+#'
+#' @returns Numeric(1). Can be negative when the fit is worse than the mean.
+#'
+#' @noRd
+.cascade_r2 <- function(y, fitted) {
+  ss_res <- sum((y - fitted)^2)
+  ss_tot <- sum((y - mean(y))^2)
+  if (ss_tot <= 0) NA_real_ else 1 - ss_res / ss_tot
+}
+
+
+#' Starting values for a cascade model, from its self-starting counterpart
+#'
+#' @param ss_formula Formula naming a self-starting model.
+#' @param d Data.frame with `time` and `y`.
+#' @param remap Function mapping the self-starter's coefficients to the
+#'   package's parameter names.
+#' @param fallback Named numeric. Used when initialisation fails.
+#'
+#' @returns Named numeric vector of starting values.
+#'
+#' @noRd
+.cascade_start_values <- function(ss_formula, d, remap, fallback) {
+  start <- tryCatch(remap(stats::getInitial(ss_formula, data = d)), error = \(e) NULL)
+
+  if (is.null(start) || !all(is.finite(start)) || !setequal(names(start), names(fallback))) {
+    return(fallback)
+  }
+  start[names(fallback)]
+}
+
+
+#' Fit one self-starting cascade model and normalise its output
+#'
+#' Shared body of [.fit_cascade_sigmoid()] and [.fit_cascade_piecewise()].
+#'
+#'
+#' @param time Numeric vector. Time values (x-axis).
+#' @param y Numeric vector. Proportions (y-axis), same length as `time`.
+#' @param model_formula Formula in the package's own parameter names.
+#' @param ss_formula Formula naming the self-starting counterpart.
+#' @param remap Function mapping self-starter coefficients to package names.
+#' @param fallback Named numeric. Starting values of last resort.
+#' @param predict_fn Function taking `time` and parameters, returning fitted
+#'   values at every `time` (including where `y` was `NA`).
+#' @param model_label Character(1). Used in the warning when fitting fails.
+#' @param label Character(1). Caller-supplied context for the warning.
+#'
+#' @returns A list with `params`, `fitted`, `r2`, or `NULL` invisibly.
+#'
+#' @noRd
+.fit_cascade_ss <- function(
+    time, y, model_formula, ss_formula, remap, fallback,
+    predict_fn, model_label, label = ""
+) {
+  mask <- !is.na(y) & !is.na(time)
+  label_str <- if (nchar(label) > 0L) sprintf(" (%s)", label) else ""
+
+  n_params <- length(fallback)
+  if (sum(mask) <= n_params || length(unique(time[mask])) <= n_params) {
+    cli::cli_warn(
+      "{model_label} fit{label_str} skipped: {sum(mask)} usable time point{?s} for {n_params} parameters."
+    )
+    return(invisible(NULL))
+  }
+
+  d <- data.frame(time = time[mask], y = y[mask])
+  start <- .cascade_start_values(ss_formula, d, remap, fallback)
+
+  fit <- tryCatch(
+    stats::nls(
+      model_formula,
+      data      = d,
+      start     = as.list(start),
+      algorithm = "port",
+      control   = stats::nls.control(maxiter = 500L)
+    ),
+    error = \(e) {
+      cli::cli_warn("{model_label} fit{label_str} failed: {conditionMessage(e)}")
+      NULL
+    }
+  )
+  if (is.null(fit)) return(invisible(NULL))
+
+  params <- stats::coef(fit)[names(fallback)]
+
+  if (!all(is.finite(params))) {
+    cli::cli_warn(
+      "{model_label} fit{label_str} returned non-finite parameters and was dropped."
+    )
+    return(invisible(NULL))
+  }
+
+  fitted <- predict_fn(time, params)
+  r2 <- .cascade_r2(d$y, fitted[mask])
+
+  list(params = params, fitted = fitted, r2 = r2)
+}
+
+
 #' Fit a sigmoid curve to a gaze-cascade grand-average series
 #'
-#' Fits a four-parameter sigmoid of the form
-#' `L + (U - L) / (1 + exp(-k * (t - t0)))` to the grand-average
-#' gaze-cascade data via nonlinear least squares with box constraints.
-#' Parameter bounds keep the curve anchored in [0.3, 1] with an asymptote
-#' above 0.5, which is appropriate for two-alternative cascade data.
+#' Fits a four-parameter logistic of the form
+#' `L + (U - L) / (1 + exp(-k * (t - t0)))` to the grand-average gaze-cascade
+#' data via nonlinear least squares, using [stats::SSfpl()]'s self-starting
+#' parameterisation and translating its coefficients back to the package's
+#' names (`scal` is the reciprocal of `k`; `xmid` is `t0`).
+#'
+#' Parameter estimates are unconstrained, i.e., the fit is free to report an
+#' upper asymptote below the lower one, or an inflection point outside the
+#' observed window. Both are reported rather than prevented.
 #'
 #' @param time Numeric vector. Time values (x-axis), typically bin midpoints
 #'   in seconds relative to the response.
@@ -45,43 +153,33 @@
 #'   \describe{
 #'     \item{`params`}{Named numeric(4): `L`, `U`, `k`, `t0`.}
 #'     \item{`fitted`}{Numeric vector of fitted values at each `time` point.}
-#'     \item{`r2`}{Numeric(1). Correlation-based coefficient of determination.}
+#'     \item{`r2`}{Numeric(1). `1 - SS_res / SS_tot`.}
 #'   }
 #'   Returns `NULL` invisibly when fitting fails, after issuing a warning.
 #'
 #' @noRd
 .fit_cascade_sigmoid <- function(time, y, label = "") {
-  mask <- !is.na(y)
-  fit <- tryCatch(
-    stats::nls(
-      y[mask] ~ .sigmoid(time[mask], L, U, k, t0),
-      start     = list(L = 0.50, U = 0.85, k =  2.5, t0 = -0.5),
-      lower     = c(   L = 0.30, U = 0.60, k =  0.1, t0 = -5.0),
-      upper     = c(   L = 0.70, U = 1.00, k = 30.0, t0 =  1.0),
-      algorithm = "port",
-      control   = stats::nls.control(maxiter = 500L, warnOnly = TRUE)
+  .fit_cascade_ss(
+    time, y,
+    model_formula = y ~ .sigmoid(time, L, U, k, t0),
+    ss_formula    = y ~ stats::SSfpl(time, A, B, xmid, scal),
+    remap = \(cf) c(
+      L  = unname(cf[["A"]]),
+      U  = unname(cf[["B"]]),
+      k  = 1 / unname(cf[["scal"]]),
+      t0 = unname(cf[["xmid"]])
     ),
-    error = \(e) {
-      label_str <- if (nchar(label) > 0L) sprintf(" (%s)", label) else ""
-      cli::cli_warn(
-        "Sigmoid fit{label_str} failed: {conditionMessage(e)}"
-      )
-      NULL
-    }
+    fallback = c(L = 0.50, U = 0.85, k = 2.5, t0 = -0.5),
+    predict_fn = \(time, p) .sigmoid(
+      time,
+      L  = p[["L"]],
+      U  = p[["U"]],
+      k  = p[["k"]],
+      t0 = p[["t0"]]
+    ),
+    model_label = "Sigmoid",
+    label = label
   )
-  if (is.null(fit)) return(invisible(NULL))
-
-  params <- stats::coef(fit)
-  fitted <- .sigmoid(
-    time,
-    L  = params["L"],
-    U  = params["U"],
-    k  = params["k"],
-    t0 = params["t0"]
-  )
-  r2 <- stats::cor(y[mask], fitted[mask])^2
-
-  list(params = params, fitted = fitted, r2 = r2)
 }
 
 
@@ -89,9 +187,13 @@
 #'
 #' Fits a three-parameter hinge model `L + slope * max(0, t - t0)` to the
 #' grand-average gaze-cascade curve via nonlinear least squares. The two
-#' interpretable parameters are the breakpoint (`t0`, when gaze begins
-#' shifting from baseline toward the chosen image) and the slope (rate of
-#' preference accumulation after the breakpoint).
+#' interpretable parameters are the breakpoint (`t0`, when gaze begins shifting
+#' from baseline toward the chosen image) and the slope (rate of preference
+#' accumulation after the breakpoint).
+#'
+#' Parameter estimates are unconstrained, i.e., the breakpoint may fall outside
+#' the observed window and the slope may be negative. Both are reported rather
+#' than prevented.
 #'
 #' @param time Numeric vector. Time values (x-axis), typically bin midpoints
 #'   in seconds relative to the response.
@@ -105,40 +207,33 @@
 #'     \item{`params`}{Named numeric(3): `L` (baseline), `t0` (breakpoint,
 #'       seconds relative to response), `slope` (rate of rise per second).}
 #'     \item{`fitted`}{Numeric vector of fitted values at each `time` point.}
-#'     \item{`r2`}{Numeric(1). Correlation-based coefficient of determination.}
+#'     \item{`r2`}{Numeric(1). `1 - SS_res / SS_tot`.}
 #'   }
 #'   Returns `NULL` invisibly when fitting fails, after issuing a warning.
 #'
 #' @noRd
 .fit_cascade_piecewise <- function(time, y, label = "") {
-  mask <- !is.na(y)
-  fit <- tryCatch(
-    stats::nls(
-      y[mask] ~ .piecewise_linear(time[mask], L, t0, slope),
-      start     = list(L = 0.5, t0 = -1.0, slope = 0.3),
-      lower     = c(   L = 0.3, t0 = min(time, na.rm = TRUE), slope = 0),
-      upper     = c(   L = 0.7, t0 = 0,                       slope = Inf),
-      algorithm = "port",
-      control   = stats::nls.control(maxiter = 500L, warnOnly = TRUE)
+  t_rng <- range(time, na.rm = TRUE)
+
+  .fit_cascade_ss(
+    time, y,
+    model_formula = y ~ .piecewise_linear(time, L, t0, slope),
+    ss_formula = NULL,
+    remap = \(cf) c(
+      L = unname(cf[["a"]]),
+      t0 = unname(cf[["xs"]]),
+      slope = unname(cf[["b"]])
     ),
-    error = \(e) {
-      label_str <- if (nchar(label) > 0L) sprintf(" (%s)", label) else ""
-      cli::cli_warn("Piecewise linear fit{label_str} failed: {conditionMessage(e)}")
-      NULL
-    }
+    fallback = c(L = 0.5, t0 = mean(t_rng), slope = 0.3),
+    predict_fn = \(time, p) .piecewise_linear(
+      time,
+      L = p[["L"]],
+      t0 = p[["t0"]],
+      slope = p[["slope"]]
+    ),
+    model_label = "Piecewise linear",
+    label = label
   )
-  if (is.null(fit)) return(invisible(NULL))
-
-  params <- stats::coef(fit)
-  fitted <- .piecewise_linear(
-    time,
-    L     = params["L"],
-    t0    = params["t0"],
-    slope = params["slope"]
-  )
-  r2 <- stats::cor(y[mask], fitted[mask])^2
-
-  list(params = params, fitted = fitted, r2 = r2)
 }
 
 
@@ -184,7 +279,11 @@
 #' Takes the cluster-level `$derivatives` output of
 #' `process(..., type = "cascade")` (one row per cluster × bin) and further
 #' averages across clusters to produce a grand-average series, a standard
-#' error, and a 95% Wald confidence interval.
+#' error, and a confidence interval.
+#'
+#' Every cluster is weighted equally regardless of its `n_trials`. That matches
+#' how the bootstrap point estimate is computed, but does mean a recording
+#' contributing few trials is as influential as one contributing many.
 #'
 #' @param data Data.frame of cluster-level cascade data, as stored in
 #'   `x$derivatives` after `process(..., type = "cascade")`. Must contain
@@ -196,8 +295,8 @@
 #'   single grand average across all clusters.
 #'
 #' @returns A data.frame with columns `bin`, `time`, `mean_prop`, `se`,
-#'   `ci_low`, `ci_high`. `time` contains bin midpoints in seconds relative
-#'   to the response.
+#'   `ci_low`, `ci_high`, `n`. `time` contains bin midpoints in seconds
+#'   relative to the response.
 #'
 #' @noRd
 .summarise_cascade <- function(data, n_bins, window, by = NULL) {
@@ -206,15 +305,17 @@
     dplyr::group_by(dplyr::across(tidyselect::all_of(grp))) |>
     dplyr::summarise(
       mean_prop = mean(.data$average_prop_chosen, na.rm = TRUE),
-      se = stats::sd(.data$average_prop_chosen, na.rm = TRUE) /
-        sqrt(sum(!is.na(.data$average_prop_chosen))),
+      n = sum(!is.na(.data$average_prop_chosen)),
+      se = stats::sd(.data$average_prop_chosen, na.rm = TRUE) / sqrt(.data$n),
       .groups = "drop"
     ) |>
     dplyr::mutate(
-      ci_low  = .data$mean_prop - stats::qnorm(0.975) * .data$se,
-      ci_high = .data$mean_prop + stats::qnorm(0.975) * .data$se,
+      .crit   = stats::qt(0.975, df = pmax(.data$n - 1L, 1L)),
+      ci_low  = .data$mean_prop - .data$.crit * .data$se,
+      ci_high = .data$mean_prop + .data$.crit * .data$se,
       time    = (.data$bin - 0.5) * window / n_bins - window
-    )
+    ) |>
+    dplyr::select(-".crit")
 }
 
 

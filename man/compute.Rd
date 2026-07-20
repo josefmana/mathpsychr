@@ -14,7 +14,12 @@
   fit_type = c("sigmoid", "piecewise", "both"),
   n_boot = 2000L,
   alpha = 0.05,
+  ci_type = c("bca", "perc", "basic", "norm"),
   seed = NULL,
+  strata = NULL,
+  parallel = c("no", "multicore", "snow"),
+  ncpus = 1L,
+  quiet = FALSE,
   ...
 )
 
@@ -40,11 +45,31 @@ or \code{mpr_gaze_cascade}).}
 
 \item{fit_type}{One of \code{"sigmoid"}, \code{"piecewise"}, or \code{"both"}.}
 
-\item{n_boot}{Integer(1). Number of bootstrap resamples.}
+\item{n_boot}{Integer(1). Number of bootstrap resamples. Defaults to \code{2000}.}
 
 \item{alpha}{Numeric(1). Significance level (e.g. \code{0.05} for 95\% CIs).}
 
-\item{seed}{Integer(1) or \code{NULL}. Seed for reproducible resampling.}
+\item{ci_type}{Character(1). Interval type, passed to \code{\link[boot:boot.ci]{boot::boot.ci()}}:
+\code{"bca"} (default), \code{"perc"}, \code{"basic"} or \code{"norm"}. Components for which
+BCa is not computable fall back to \code{"perc"}. Which ones is recorded in
+\code{attr(x$param_summary, "ci_fallback")}.}
+
+\item{seed}{Integer(1) or \code{NULL}. Applied via \code{\link[withr:with_seed]{withr::with_seed()}}, so the
+caller's RNG stream is left untouched. Both fit types are fit inside a
+single statistic and so see exactly the same resamples.}
+
+\item{strata}{Character(1) or \code{NULL} (default). A recording-level column to
+stratify resampling within, passed to \code{\link[boot:boot]{boot::boot()}}. Worth setting when
+\code{grp_vars} is a \emph{between}-recording factor, since unstratified resampling
+can then return a resample with no recordings at some level.}
+
+\item{parallel}{Character(1). \code{"no"} (default), \code{"multicore"} or \code{"snow"}.
+The progress bar is only shown when \code{"no"}.}
+
+\item{ncpus}{Integer(1). Number of processes when \code{parallel} is not \code{"no"}.}
+
+\item{quiet}{Logical(1). Suppress the exploratory-use notice and the
+fit-health report. Defaults to \code{FALSE} (recommended).}
 
 \item{...}{Additional arguments passed to methods.}
 
@@ -71,20 +96,19 @@ inspection via \code{x$correlation_summary}).}
 \value{
 An \code{mpr_cascade_fit} object, i.e., a list containing:
 \describe{
-\item{param_summary}{Bootstrapped parameter estimates and CIs, one row
-per parameter per fit type, plus per-group rows if \code{grp_vars} was set}
+\item{param_summary}{Parameter estimates and intervals, one row per
+parameter per fit type, plus per-group rows if \code{grp_vars} was set.
+\code{estimate} is the fit to the observed, un-resampled grand average}
 \item{diff_summary}{Between-group parameter differences, or \code{NULL} if
-ungrouped}
-\item{fits}{Per-fit-type list of observed fits and raw bootstrap draws}
-\item{fit_type}{Character informing on type(s) of fit (Sigmoid or
-Piecewise Linear)}
-\item{grp_vars}{Character containing variable names used for grouping}
-\item{alpha}{Alpha significance used for calculaiton of confidence
-intervals}
+ungrouped. \code{estimate} is the difference of the two observed estimates}
+\item{fits}{Per-fit-type list of observed fits, raw bootstrap draws
+(including \code{r2}), and a fit-health report}
+\item{boot}{The underlying \code{boot} object, filtered to usable resamples}
+\item{spec}{Layout mapping \code{boot$t} columns to fit type, group, parameter}
+\item{fit_type, grp_vars, alpha, ci_type}{Call metadata}
 }.
-Call \code{\link[=as_gt]{as_gt()}} or \code{\link[=print]{print()}} on the result to render \code{{gt}} tables. Call
-\code{\link[=as_gt]{as_gt()}} explicitly in R Markdown/vignette chunks; \code{\link[=print]{print()}} is for
-interactive console use.
+Call \code{\link[=as_gt]{as_gt()}} or \code{\link[=print]{print()}} to render \code{{gt}} tables, \code{\link[=plot]{plot()}} for
+estimates, differences, or bootstrap diagnostics.
 
 An \code{mpr_gaze_measures_comparison} object, i.e., a list containing:
 \describe{
@@ -132,6 +156,33 @@ and returns the results in whatever form is natural for it. See the
 subclass-specific sections below for exact return shapes.
 }
 \details{
+\strong{This is a descriptive device, not a model of the decision process.} It
+takes the grand-average cascade curve, puts a sigmoid and/or a piecewise
+linear curve with one hinge through it, and resamples recordings to see how
+stable the resulting numbers are. It does not model trials, participants, or
+the dependence between time bins, and the "p-value" in \code{diff_summary} is an
+inverted interval rather than a test. Read the output as a structured look
+at the shape of your data, a re-representation via lower dimensional curves
+indicating where the curve turns, how steeply or whether groups differ
+enough to be worth modelling properly. Do not consider its outputs as the
+analysis itself!
+
+Both curves are fit with self-starting models (\link[stats:SSfpl]{stats::SSfpl} and
+\link[nlraa:SSplin]{nlraa::SSplin}), which means no start values and no box constraints. Fits
+are therefore free to land anywhere, even at implausible values (e.g., an
+upper asymptote below the lower one, a breakpoint outside the observed
+window). \code{x$fits[[type]]$health} reports how often that happened across
+resamples.
+
+Resampling and interval construction are delegated to \code{{boot}}. The
+underlying object is returned on \code{x$boot}, and \code{x$spec} maps its columns to
+fit type, group and parameter, so any other interval type is directly
+available:
+
+\if{html}{\out{<div class="sourceCode">}}\preformatted{i <- which(x$spec$kind == "param" & x$spec$parameter == "k")[1]
+boot::boot.ci(x$boot, index = i, type = "stud")
+}\if{html}{\out{</div>}}
+
 Each measure is routed by its AOI/Stimulus scope (see
 \code{mathpsychr:::.measure_taxonomy}). Categorical Stimulus-scope measures
 (\code{first}/\code{last_fixated_aoi}/\code{reference}; see

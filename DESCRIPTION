@@ -9,6 +9,7 @@ Description: Infrastructure for specifying, simulating, and evaluating
     experiments.
 License: MIT + file LICENSE
 Imports: 
+    boot,
     cli,
     dplyr (>= 1.1),
     eyelinker,
