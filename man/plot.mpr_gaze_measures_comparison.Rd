@@ -74,6 +74,7 @@ Other eyetracking:
 \code{\link{as_gt.mpr_cascade_fit}()},
 \code{\link{as_gt.mpr_gaze_measures_comparison}()},
 \code{\link{format.mpr_eyetracking}()},
+\code{\link{plot.mpr_cascade_fit}()},
 \code{\link{plot.mpr_gaze_cascade}()},
 \code{\link{print.mpr_cascade_fit}()},
 \code{\link{print.mpr_eyetracking}()}
