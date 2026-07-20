@@ -456,12 +456,12 @@
     dplyr::mutate(
       measure_label = .measure_label(.data$measure),
       .group_label = if (is.null(dynamic_col)) {
-        measure_label
+        .data$measure_label
       } else {
         dplyr::if_else(
           is.na(.data[[dynamic_col]]),
-          measure_label,
-          paste0(measure_label, " \u2014 ", .data[[dynamic_col]])
+          .data$measure_label,
+          paste0(.data$measure_label, " \u2014 ", .data[[dynamic_col]])
         )
       },
       ci_display = if (has_ci) {

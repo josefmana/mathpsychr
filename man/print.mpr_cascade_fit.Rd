@@ -17,7 +17,7 @@
 }
 \description{
 Builds a \code{{gt}} table via \code{\link[=as_gt]{as_gt()}} and prints it. Interactive console
-use only — for R Markdown/vignette chunks, call \code{\link[=as_gt]{as_gt()}} directly so
+use only. For R Markdown/vignette chunks, call \code{\link[=as_gt]{as_gt()}} directly so
 knitr's normal rendering pipeline picks up the \code{{gt}} table.
 }
 \seealso{

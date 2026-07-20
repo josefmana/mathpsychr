@@ -108,7 +108,7 @@
       subtitle = if (fit_type == "both") {
         "Bootstrapped estimates, sigmoid and piecewise linear fits"
       } else {
-        paste(.fit_type_display[[fit_type]], "fit — bootstrapped estimates")
+        paste(.fit_type_display[[fit_type]], "fit \u2014 bootstrapped estimates")
       }
     )
 }
@@ -206,7 +206,7 @@ as_gt.mpr_cascade_fit <- function(x, type = c("estimates", "differences"), ...) 
 #' Print an `mpr_cascade_fit` object
 #'
 #' Builds a `{gt}` table via [as_gt()] and prints it. Interactive console
-#' use only — for R Markdown/vignette chunks, call [as_gt()] directly so
+#' use only. For R Markdown/vignette chunks, call [as_gt()] directly so
 #' knitr's normal rendering pipeline picks up the `{gt}` table.
 #'
 #' @param x An `mpr_cascade_fit` object, as returned by
