@@ -9,6 +9,7 @@
   show_clusters = TRUE,
   show_grand_avg = TRUE,
   fit_type = c("sigmoid", "piecewise", "both", "none"),
+  alpha = 0.05,
   ...
 )
 }
@@ -21,8 +22,8 @@ curves in the background. Defaults to \code{TRUE}. Ignored (never drawn)
 when faceting by curve type; see Details.}
 
 \item{show_grand_avg}{Logical(1). Whether to draw the grand-average line
-(and, outside of curve-type faceting, its 95\% CI ribbon). Defaults to
-\code{TRUE}. Set to \code{FALSE} to show fit curves only. Interacts with
+(and, outside of curve-type faceting, its 1 - \code{alpha} CI ribbon). Defaults
+to \code{TRUE}. Set to \code{FALSE} to show fit curves only. Interacts with
 \code{fit_type} when \code{x} is grouped; see Details.}
 
 \item{fit_type}{Character(1). Which curve model(s) to overlay: \code{"sigmoid"}
@@ -34,6 +35,9 @@ corresponding layer or panel is silently dropped. When \code{x} is grouped
 (see Details on \code{grp_vars}), \code{fit_type} also determines the plot's
 overall layout; see Details.}
 
+\item{alpha}{Numeric(1). Significance level for grand average line. Relevant
+when \code{show_grand_avg} is \code{TRUE}. Defaults to \code{0.05} for 95\% CI ribbon.}
+
 \item{...}{Currently unused.}
 }
 \value{
@@ -43,7 +47,7 @@ curve-type panels side by side) a \code{patchwork} object.
 \description{
 Produces a gaze-cascade plot from an \code{mpr_gaze_cascade} object. Individual
 cluster curves (e.g., per-participant) are optionally drawn in grey behind
-the grand-average line and its 95\% CI ribbon. One or both of a four-parameter
+the grand-average line and its CI ribbon. One or both of a four-parameter
 sigmoid and a piecewise linear model can be overlaid.
 }
 \details{
@@ -78,16 +82,3 @@ shading colour-matches its group's mean line.}
 When \code{x} was processed without \code{grp_vars}, a single panel is produced
 with all requested curves overlaid and sharing one legend.
 }
-\seealso{
-Other eyetracking: 
-\code{\link{as.data.frame.mpr_eyetracking}()},
-\code{\link{as_gt.mpr_gaze_cascade_fit}()},
-\code{\link{as_gt.mpr_gaze_measures_comparison}()},
-\code{\link{flatten.mpr_gaze_measures}()},
-\code{\link{format.mpr_eyetracking}()},
-\code{\link{plot.mpr_gaze_cascade_fit}()},
-\code{\link{plot.mpr_gaze_measures_comparison}()},
-\code{\link{print.mpr_eyetracking}()},
-\code{\link{print.mpr_gaze_cascade_fit}()}
-}
-\concept{eyetracking}

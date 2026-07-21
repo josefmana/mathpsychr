@@ -30,6 +30,7 @@
   alpha = 0.05,
   p_adjust_method = "bonferroni",
   correlate = FALSE,
+  quiet = FALSE,
   ...
 )
 
@@ -69,7 +70,7 @@ The progress bar is only shown when \code{"no"}.}
 \item{ncpus}{Integer(1). Number of processes when \code{parallel} is not \code{"no"}.}
 
 \item{quiet}{Logical(1). Suppress the exploratory-use notice and the
-fit-health report. Defaults to \code{FALSE} (recommended).}
+computation issues report. Defaults to \code{FALSE} (recommended).}
 
 \item{...}{Additional arguments passed to methods.}
 
@@ -94,7 +95,7 @@ across every tested statistic, for later use by
 inspection via \code{x$correlation_summary}).}
 }
 \value{
-An \code{mpr_cascade_fit} object, i.e., a list containing:
+An \code{mpr_gaze_cascade_fit} object, i.e., a list containing:
 \describe{
 \item{param_summary}{Parameter estimates and intervals, one row per
 parameter per fit type, plus per-group rows if \code{grp_vars} was set.
@@ -125,7 +126,7 @@ matrix (one row per statistic pair x group), or \code{NULL} if
 \item{avg_data}{Participant-level averaged input data. Returned for
 inspection or custom operations.}
 \item{cat_counts}{Participant-level category counts and proportions
-(categorical mesures). The more granular/proximal artifact behind
+(categorical measures). The more granular/proximal artifact behind
 \code{avg_data}'s categorical rows. Returned for inspection or custom
 operations.}
 \item{grp_vars}{Character containing the \code{grp_vars} actually
@@ -138,6 +139,8 @@ in a table footnote even when \code{pairwise_summary} is \code{NULL}.}
 \item{aois}{Character. AOI levels compared (true AOI-scope measures
 only, categorical measures' levels are in \code{cat_counts$category}).}
 \item{stats}{Character. Base name(s) of measures(s) compared.}
+\item{nesting_summary}{Summary of nesting, i.e., within- vs.
+between-subject structure for grouping variables used.}
 
 }
 Call \code{\link[=as_gt]{as_gt()}} or \code{\link[=print]{print()}} on the result to render \code{{gt}} tables. Call

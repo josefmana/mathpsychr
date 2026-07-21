@@ -2,7 +2,7 @@
 % Please edit documentation in R/eyetracking-plot-cascade-fit.R
 \name{plot.mpr_gaze_cascade_fit}
 \alias{plot.mpr_gaze_cascade_fit}
-\title{Plot an \code{mpr_cascade_fit} object}
+\title{Plot an \code{mpr_gaze_cascade_fit} object}
 \usage{
 \method{plot}{mpr_gaze_cascade_fit}(
   x,
@@ -15,7 +15,7 @@
 )
 }
 \arguments{
-\item{x}{An \code{mpr_cascade_fit} object, as returned by
+\item{x}{An \code{mpr_gaze_cascade_fit} object, as returned by
 \code{\link[=compute.mpr_gaze_cascade]{compute.mpr_gaze_cascade()}}.}
 
 \item{type}{Character(1).
@@ -29,7 +29,7 @@ counterpart of \code{as_gt(x, type = "differences")}; errors when
 \code{compute()} was run without \code{grp_vars}.}
 \item{\code{"histogram"}}{Marginal distribution of each parameter's bootstrap
 draws, with point estimate and CI bounds overlaid. Read for
-bimodality, spikes at a box constraint, and skew; see Details.}
+bimodality, and skew; see Details.}
 \item{\code{"pairs"}}{Scatter matrix of the draws, one panel per parameter
 pair with its Pearson correlation, for diagnosing parameter
 collinearity; see Details.}
@@ -60,7 +60,7 @@ than one fit type is plotted.
 Two families of view over a bootstrapped gaze-cascade fit:
 \itemize{
 \item \emph{inference} (\code{type = "estimates"}, \code{"differences"}) reads the same summary
-tables \code{\link[=as_gt.mpr_cascade_fit]{as_gt.mpr_cascade_fit()}} renders,
+tables \code{\link[=as_gt.mpr_gaze_cascade_fit]{as_gt.mpr_gaze_cascade_fit()}} renders,
 \item \emph{diagnostics} (\code{type = "histogram"}, \code{"pairs"}) read the raw bootstrap
 draws stored in \code{x$fits}.
 }
@@ -84,7 +84,7 @@ preferable.
 }
 
 \code{type = "pairs"} shows the joint distribution. A tight diagonal ridge
-between two parameters means the data do not identify them separately,so
+between two parameters means the data do not identify them separately, so
 their marginal intervals understate the joint uncertainty, and neither
 parameter should be interpreted while holding the other fixed.
 
@@ -93,17 +93,5 @@ A clean unimodal, uncorrelated set of draws means the bootstrap behaved, not
 that the curve model is necessarily the right description of the data.
 }
 \seealso{
-\code{\link[=compute.mpr_gaze_cascade]{compute.mpr_gaze_cascade()}}, \code{\link[=as_gt.mpr_cascade_fit]{as_gt.mpr_cascade_fit()}}
-
-Other eyetracking: 
-\code{\link{as.data.frame.mpr_eyetracking}()},
-\code{\link{as_gt.mpr_gaze_cascade_fit}()},
-\code{\link{as_gt.mpr_gaze_measures_comparison}()},
-\code{\link{flatten.mpr_gaze_measures}()},
-\code{\link{format.mpr_eyetracking}()},
-\code{\link{plot.mpr_gaze_cascade}()},
-\code{\link{plot.mpr_gaze_measures_comparison}()},
-\code{\link{print.mpr_eyetracking}()},
-\code{\link{print.mpr_gaze_cascade_fit}()}
+\code{\link[=compute.mpr_gaze_cascade]{compute.mpr_gaze_cascade()}}, \code{\link[=as_gt.mpr_gaze_cascade_fit]{as_gt.mpr_gaze_cascade_fit()}}
 }
-\concept{eyetracking}

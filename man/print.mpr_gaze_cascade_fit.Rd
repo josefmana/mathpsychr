@@ -20,16 +20,3 @@ Builds a \code{{gt}} table via \code{\link[=as_gt]{as_gt()}} and prints it. Inte
 use only. For R Markdown/vignette chunks, call \code{\link[=as_gt]{as_gt()}} directly so
 knitr's normal rendering pipeline picks up the \code{{gt}} table.
 }
-\seealso{
-Other eyetracking: 
-\code{\link{as.data.frame.mpr_eyetracking}()},
-\code{\link{as_gt.mpr_gaze_cascade_fit}()},
-\code{\link{as_gt.mpr_gaze_measures_comparison}()},
-\code{\link{flatten.mpr_gaze_measures}()},
-\code{\link{format.mpr_eyetracking}()},
-\code{\link{plot.mpr_gaze_cascade}()},
-\code{\link{plot.mpr_gaze_cascade_fit}()},
-\code{\link{plot.mpr_gaze_measures_comparison}()},
-\code{\link{print.mpr_eyetracking}()}
-}
-\concept{eyetracking}

@@ -39,16 +39,3 @@ differences (\code{type = "differences"}), from \code{x$param_summary} /
 rather than stored on the object.
 
 }}
-\seealso{
-Other eyetracking: 
-\code{\link{as.data.frame.mpr_eyetracking}()},
-\code{\link{as_gt.mpr_gaze_measures_comparison}()},
-\code{\link{flatten.mpr_gaze_measures}()},
-\code{\link{format.mpr_eyetracking}()},
-\code{\link{plot.mpr_gaze_cascade}()},
-\code{\link{plot.mpr_gaze_cascade_fit}()},
-\code{\link{plot.mpr_gaze_measures_comparison}()},
-\code{\link{print.mpr_eyetracking}()},
-\code{\link{print.mpr_gaze_cascade_fit}()}
-}
-\concept{eyetracking}

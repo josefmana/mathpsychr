@@ -9,10 +9,9 @@
 \arguments{
 \item{x}{An \code{mpr_eyetracking} object.}
 
-\item{n}{Integer(1). Number of rows of \verb{$derivatives} to show via \code{\link[=head]{head()}}.
-Defaults to 6.}
+\item{n}{Integer(1). Number of rows of \verb{$derivatives} to show. Defaults to 6.}
 
-\item{...}{Currently unused.}
+\item{...}{Passed to \code{\link[=format.mpr_eyetracking]{format.mpr_eyetracking()}}.}
 }
 \value{
 \code{x} invisibly.
@@ -20,16 +19,3 @@ Defaults to 6.}
 \description{
 Print an \code{mpr_eyetracking} object
 }
-\seealso{
-Other eyetracking: 
-\code{\link{as.data.frame.mpr_eyetracking}()},
-\code{\link{as_gt.mpr_gaze_cascade_fit}()},
-\code{\link{as_gt.mpr_gaze_measures_comparison}()},
-\code{\link{flatten.mpr_gaze_measures}()},
-\code{\link{format.mpr_eyetracking}()},
-\code{\link{plot.mpr_gaze_cascade}()},
-\code{\link{plot.mpr_gaze_cascade_fit}()},
-\code{\link{plot.mpr_gaze_measures_comparison}()},
-\code{\link{print.mpr_gaze_cascade_fit}()}
-}
-\concept{eyetracking}

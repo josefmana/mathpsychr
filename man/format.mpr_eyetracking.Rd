@@ -2,7 +2,7 @@
 % Please edit documentation in R/eyetracking-methods.R
 \name{format.mpr_eyetracking}
 \alias{format.mpr_eyetracking}
-\title{Format an \code{mpr_eyetracking} object as a string}
+\title{Format an \code{mpr_eyetracking} object}
 \usage{
 \method{format}{mpr_eyetracking}(x, ...)
 }
@@ -12,22 +12,8 @@
 \item{...}{Currently unused.}
 }
 \value{
-A single character string giving a compact description of the
-object.
+A character vector, one element per line of the header block.
 }
 \description{
-Format an \code{mpr_eyetracking} object as a string
+Format an \code{mpr_eyetracking} object
 }
-\seealso{
-Other eyetracking: 
-\code{\link{as.data.frame.mpr_eyetracking}()},
-\code{\link{as_gt.mpr_gaze_cascade_fit}()},
-\code{\link{as_gt.mpr_gaze_measures_comparison}()},
-\code{\link{flatten.mpr_gaze_measures}()},
-\code{\link{plot.mpr_gaze_cascade}()},
-\code{\link{plot.mpr_gaze_cascade_fit}()},
-\code{\link{plot.mpr_gaze_measures_comparison}()},
-\code{\link{print.mpr_eyetracking}()},
-\code{\link{print.mpr_gaze_cascade_fit}()}
-}
-\concept{eyetracking}

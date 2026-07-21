@@ -12,7 +12,7 @@ annotate_chosen_aoi(
 )
 }
 \arguments{
-\item{x}{An \code{mpr_gaze_measrues} object.}
+\item{x}{An \code{mpr_gaze_measures} object.}
 
 \item{chosen_aoi_col}{Character(1). Column in \code{x$responses} holding the
 chosen AOI label.}
