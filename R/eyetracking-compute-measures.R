@@ -7,75 +7,6 @@
   anova_mixed         = "Mixed ANOVA (one factor within, one between)"
 )
 
-# Measure taxonomy
-.measure_taxonomy <- tibble::tribble(
-  ~stat,                             ~category,               ~feature,                         ~label,                                  ~scope,
-  "fixation_count",                  "Attention allocation",  "Fixation count",                 "Fixation count",                        "aoi",
-  "dwell_time_total",                "Attention allocation",  "Dwell time",                     "Total dwell time",                      "aoi",
-  "dwell_time_mean",                 "Attention allocation",  "Dwell time",                     "Mean dwell time",                       "aoi",
-  "dwell_time_median",               "Attention allocation",  "Dwell time",                     "Median dwell time",                     "aoi",
-  "dwell_time_sd",                   "Attention allocation",  "Dwell time",                     "Dwell time SD",                         "aoi",
-  "revisits_count",                  "Scan path",             "Revisits count",                 "Revisits count",                        "aoi",
-  "switches_total",                  "Scan path",             "Number of switches",             "Total number of switches",              "stimulus",
-  "switches_direct",                 "Scan path",             "Number of switches",             "Number of direct switches",             "stimulus",
-  "first_fixation_start",            "Temporal markers",      "First/last fixation time",       "First fixation time",                   "aoi",
-  "last_fixation_end",               "Temporal markers",      "First/last fixation time",       "Last fixation time",                    "aoi",
-  "first_fixated_aoi",               "Temporal markers",      "First/last fixation location",   "First fixation location",               "stimulus",
-  "last_fixated_aoi",                "Temporal markers",      "First/last fixation location",   "Last fixation location",                "stimulus",
-  "watch_time",                      "Temporal markers",      "Watch time",                     "Watch time",                            "stimulus",
-  "transitions_query_refs",          "Triplet task-specific", "Query-reference transitions",    "Total query-reference transitions",     "stimulus",
-  "direct_transitions_query_refs",   "Triplet task-specific", "Query-reference transitions",    "Direct query-reference transitions",    "stimulus",
-  "transitions_query_ref1",          "Triplet task-specific", "Query-reference transitions",    "Total query-reference A transitions",   "stimulus",
-  "direct_transitions_query_ref1",   "Triplet task-specific", "Query-reference transitions",    "Direct query-reference A transitions",  "stimulus",
-  "transitions_query_ref2",          "Triplet task-specific", "Query-reference transitions",    "Total query-reference B transitions",   "stimulus",
-  "direct_transitions_query_ref2",   "Triplet task-specific", "Query-reference transitions",    "Direct query-reference B transitions",  "stimulus",
-  "transitions_ref_to_ref",          "Triplet task-specific", "Transitions between references", "Transitions between references",        "stimulus",
-  "direct_transitions_ref_to_ref",   "Triplet task-specific", "Transitions between references", "Direct transitions between references", "stimulus",
-  "first_reference_fixation_start",  "Triplet task-specific", "First/last reference fixations", "First refrence fixation time",          "stimulus",
-  "first_fixated_reference",         "Triplet task-specific", "First/last reference fixations", "First reference fixation location",     "stimulus",
-  "last_reference_fixation_end",     "Triplet task-specific", "First/last reference fixations", "Last refrence fixation time",           "stimulus",
-  "last_fixated_reference",          "Triplet task-specific", "First/last reference fixations", "Last reference fixation location",      "stimulus"
-)
-
-# Stats whose *value* is a categorical
-.categorical_measure_stats <- c(
-  "first_fixated_aoi",
-  "last_fixated_aoi",
-  "first_fixated_reference",
-  "last_fixated_reference"
-)
-
-
-#' Look up the AOI/Stimulus scope of a base statistic name
-#' @noRd
-.measure_scope <- function(stat) {
-  scope <- .measure_taxonomy$scope[match(stat, .measure_taxonomy$stat)]
-  if (anyNA(scope)) {
-    cli::cli_abort("Unrecognised statistic{?s}: {.val {stat[is.na(scope)]}}.")
-  }
-  scope
-}
-
-
-#' Natural-language label for a base statistic name, for plots/tables
-#'
-#' Falls back to the raw stat name for anything not in `.measure_taxonomy`
-#' (e.g. a future stat added to `.valid_et_stats` before this table is
-#' updated), rather than erroring.
-#'
-#' @noRd
-.measure_label <- function(stat) {
-  label <- .measure_taxonomy$label[match(stat, .measure_taxonomy$stat)]
-  dplyr::coalesce(label, stat)
-}
-
-
-#' Natural-language category for a base statistic name, for grouping
-#' @noRd
-.measure_category <- function(stat) {
-  .measure_taxonomy$category[match(stat, .measure_taxonomy$stat)]
-}
-
 
 #' Resolve AOI-specific statistic columns present in `derivatives`
 #'
@@ -105,7 +36,7 @@
 #' statistics that vary by AOI, for pivot-spec purposes), Stimulus-scope
 #' statistics do not need special AOI-aware pivot handling. Instead, they are
 #' ordinary columns, optionally window-suffixed like every other requested
-#' stat (see `.process_et_measures()`'s `rename_with()`). This fucntion mirrors
+#' stat (see `.process_gaze_measures()`'s `rename_with()`). This function mirrors
 #' the suffix-aware matching locally, against the Stimulus-scope subset of
 #' `.measure_taxonomy` (excluding the categorical, not-yet-testable stats).
 #'
@@ -134,7 +65,7 @@
 #' Same suffix-aware matching as [.stimulus_stat_cols_for_measures()], but
 #' against `.categorical_measure_stats`. These are Stimulus-scope by join
 #' (see `.measure_taxonomy`) but categorical by value, so they are transform
-#' to proportions downstream and treate as AOI-scope measures instead.
+#' to proportions downstream and treat as AOI-scope measures instead.
 #'
 #' @param derivatives `mpr_gaze_measures` object `$derivatives`.
 #'
@@ -435,7 +366,7 @@
 #'   same person is measured at every AOI); `"between"` if every `.id`
 #'   appears at exactly one level (e.g. an experimental conditions only one of
 #'   which is seen by a single person); `"mixed"` cases (some ids nested, some
-#'   crossed) are treated as `"between"` with a warning, which is the more
+#'   crossed) are treatd as `"between"` with a warning, which is the more
 #'   conservative assumption, since wrongly treating a repeated id as
 #'   independent loses power but does not inflate significance, whereas the
 #'   reverse can.
@@ -446,7 +377,7 @@
     d |>
     dplyr::distinct(.data$.id, .data[[factor_col]]) |>
     dplyr::count(.data$.id) |>
-    dplyr::pull(.data$n)
+    dplyr::pull("n")
 
   n_levels <- dplyr::n_distinct(d[[factor_col]])
 
@@ -493,7 +424,7 @@
 #' @param group_data One `measure`-group's slice of the (AOI- or
 #'   Stimulus-scope) `avg_data`.
 #' @param measure Character(1). Measure identity for informative message when
-#'   skipped due to inadequate data. Must be one of `.valid_et_stats`.
+#'   skipped due to inadequate data. Must be one of `.valid_gaze_stats`.
 #' @param id_cols Character. Identifier column(s); collapsed to a single
 #'   `.id` column, since {rstatix} requires a single `wid` column.
 #' @param factors Character(1) or Character(2). Column name(s) in `group_data`
@@ -539,7 +470,7 @@
       dplyr::distinct(.data$.id, dplyr::across(tidyselect::all_of(within_factors))) |>
       dplyr::count(.data$.id) |>
       dplyr::filter(.data$n == n_combos) |>
-      dplyr::pull(.data$.id)
+      dplyr::pull(".id")
   } else {
     complete_ids <- unique(d$.id[!is.na(d$avg_value)])
   }
@@ -592,7 +523,8 @@
     return(list(
       test_type = "anova",
       test = test,
-      pairwise = dplyr::bind_cols(pairwise, effect)
+      pairwise = dplyr::bind_cols(pairwise, effect),
+      nesting = nesting
     ))
   }
 
@@ -649,7 +581,7 @@
 
   pairwise <- dplyr::bind_cols(pairwise, effect)
 
-  list(test_type = test_type, test = test, pairwise = pairwise)
+  list(test_type = test_type, test = test, pairwise = pairwise, nesting = nesting)
 }
 
 
@@ -725,8 +657,10 @@
 #' @param alpha Numeric(1). Significance level.
 #' @param p_adjust_method Character(1). Post-hoc p-value adjustment method.
 #'
-#' @returns A list with `test_summary` and `pairwise_summary` (`NULL` if no
-#'   measure needed post-hoc anywhere).
+#' @returns A list with `test_summary`, `pairwise_summary` (`NULL` if no
+#'   measure needed post-hoc anywhere), and `nesting_summary` (one row per
+#'   measure × comparison factor recording whether [.detect_nesting()]
+#'   classified that factor as within- or between-subject).
 #'
 #' @noRd
 .run_measure_tests <- function(
@@ -734,6 +668,7 @@
 ) {
   test_rows <- list()
   pairwise_rows <- list()
+  nesting_rows <- list()
 
   .add_result <- function(result, key, scope) {
     if (is.null(result)) {
@@ -755,6 +690,19 @@
       pw_meta$test_label <- unname(.measures_test_labels["pairwise_t_test"])
       pw_meta <- pw_meta[rep(1L, nrow(result$pairwise)), , drop = FALSE]
       pairwise_rows[[length(pairwise_rows) + 1L]] <<- dplyr::bind_cols(pw_meta, tibble::as_tibble(result$pairwise))
+    }
+
+    if (!is.null(result$nesting)) {
+      n_terms <- length(result$nesting)
+      nest_meta <- key[rep(1L, n_terms), , drop = FALSE]
+      nesting_rows[[length(nesting_rows) + 1L]] <<- dplyr::bind_cols(
+        nest_meta,
+        tibble::tibble(
+          scope   = scope,
+          term    = names(result$nesting),
+          nesting = unname(result$nesting)
+        )
+      )
     }
     invisible(NULL)
   }
@@ -791,7 +739,8 @@
 
   list(
     test_summary = dplyr::bind_rows(test_rows),
-    pairwise_summary = if (length(pairwise_rows) == 0L) NULL else dplyr::bind_rows(pairwise_rows)
+    pairwise_summary = if (length(pairwise_rows) == 0L) NULL else dplyr::bind_rows(pairwise_rows),
+    nesting_summary = if (length(nesting_rows) == 0L) NULL else dplyr::bind_rows(nesting_rows)
   )
 }
 
@@ -969,6 +918,8 @@
 #'   across every tested statistic, for later use by
 #'   `plot.mpr_gaze_measures_comparison(type = "scatter")` (and for direct
 #'   inspection via `x$correlation_summary`).
+#' @param quiet Logical(1). Suppress the exploratory-use notice and the
+#'   computation issues report. Defaults to `FALSE` (recommended).
 #' @param ... Currently unused.
 #'
 #' @details
@@ -1010,7 +961,7 @@
 #'     \item{avg_data}{Participant-level averaged input data. Returned for
 #'     inspection or custom operations.}
 #'     \item{cat_counts}{Participant-level category counts and proportions
-#'     (categorical mesures). The more granular/proximal artifact behind
+#'     (categorical measures). The more granular/proximal artifact behind
 #'     `avg_data`'s categorical rows. Returned for inspection or custom
 #'     operations.}
 #'     \item{grp_vars}{Character containing the `grp_vars` actually
@@ -1023,6 +974,8 @@
 #'     \item{aois}{Character. AOI levels compared (true AOI-scope measures
 #'     only, categorical measures' levels are in `cat_counts$category`).}
 #'     \item{stats}{Character. Base name(s) of measures(s) compared.}
+#'     \item{nesting_summary}{Summary of nesting, i.e., within- vs.
+#'     between-subject structure for grouping variables used.}
 #'
 #'   }
 #'   Call [as_gt()] or [print()] on the result to render `{gt}` tables. Call
@@ -1037,6 +990,7 @@ compute.mpr_gaze_measures <- function(
     alpha = 0.05,
     p_adjust_method = "bonferroni",
     correlate = FALSE,
+    quiet = FALSE,
     ...
 ) {
   derivatives <- x$derivatives
@@ -1093,6 +1047,14 @@ compute.mpr_gaze_measures <- function(
     descriptive_summary
   }
 
+  if (!quiet) {
+    .report_measures_caveats(
+      test_summary, results$pairwise_summary, stat_map,
+      grp_vars, stratify_vars, p_adjust_method,
+      nesting = results$nesting_summary
+    )
+  }
+
   structure(
     list(
       test_summary        = test_summary,
@@ -1106,7 +1068,8 @@ compute.mpr_gaze_measures <- function(
       alpha               = alpha,
       p_adjust_method     = p_adjust_method,
       aois                = sort(unique(stats::na.omit(avg_data$aoi[avg_data$scope == "aoi"]))),
-      stats               = unique(stat_map$stat)
+      stats               = unique(stat_map$stat),
+      nesting_summary     = results$nesting_summary
     ),
     class = "mpr_gaze_measures_comparison"
   )

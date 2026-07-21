@@ -593,7 +593,7 @@
 
 #' Slice one fit type's marginal draws out of the shared bootstrap result
 #'
-#' `plot.mpr_cascade_fit()` consumes this. `draws` is a tibble (one row per
+#' `plot.mpr_gaze_cascade_fit()` consumes this. `draws` is a tibble (one row per
 #' retained resample x group), carrying `param_*` columns plus `r2`. Contrast
 #' components are excluded as `diff_summary` already carries them.
 #'
@@ -698,7 +698,7 @@
 #' boot::boot.ci(x$boot, index = i, type = "stud")
 #' ```
 #'
-#' @returns An `mpr_cascade_fit` object, i.e., a list containing:
+#' @returns An `mpr_gaze_cascade_fit` object, i.e., a list containing:
 #'   \describe{
 #'     \item{param_summary}{Parameter estimates and intervals, one row per
 #'     parameter per fit type, plus per-group rows if `grp_vars` was set.
@@ -867,36 +867,7 @@ compute.mpr_gaze_cascade <- function(
   attr(param_summary, "ci_fallback") <- fell_back
 
   if (!quiet) {
-    if (nrow(fell_back) > 0L) {
-      cli::cli_inform(c(
-        "!" = "{nrow(fell_back)} component{?s} fell back to a percentile interval; {.val {ci_type}} was not computable for {?it/them}.",
-        "i" = "Happens when every draw sits on one side of the point estimate. See {.code attr(x$param_summary, \"ci_fallback\")}."
-      ))
-    }
-
-    flagged <- dplyr::filter(boot_result$health, .data$prop_draws > 0.05)
-    if (nrow(flagged) > 0L) {
-      bullets <- sprintf(
-        "%s / %s: %s in %.0f%% of resamples",
-        .fit_type_display[flagged$fit_type],
-        flagged$group_name,
-        flagged$check,
-        100 * flagged$prop_draws
-      )
-      cli::cli_inform(c(
-        "!" = "Fit-health flags:",
-        rlang::set_names(bullets, rep("*", length(bullets))),
-        "i" = "These are not errors. The self-starting fits are unconstrained, so these are real features of the fitted curves.",
-        "i" = "Inspect with {.code plot(x, type = \"histogram\")} and {.code plot(x, type = \"pairs\")}."
-      ))
-    }
-
-    cli::cli_warn(c(
-      "",
-      "i" = "These curves are a {.emph description} of the grand-average gaze cascade, not a model of the decision process.",
-      "i" = "Time bins are treated as independent observations of an aggregate. Trials and participants are not modelled.",
-      "i" = "Use this to see the shape of your data and to spot oddities, not as the analysis."
-    ))
+    .report_cascade_caveats(fell_back, ci_type, boot_result$health)
   }
 
   structure(
