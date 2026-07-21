@@ -4,9 +4,10 @@
 #' subclass constructor must call this and append its own class
 #' label via the `subclass` argument.
 #'
-#' If `metadata` or `responses` are provided, they and `fixations` must contain
-#' **exactly one** column whose name ends with `_id` indicating grouping of the
-#' data (e.g., participant ID or a single run ID within repeated recordings.)
+#' `fixations` must contain **exactly one** column whose name ends with `_id`,
+#' identifying the recording (e.g. participant ID, or a run ID within repeated
+#' recordings). When `metadata` or `responses` are supplied, they must carry a
+#' column of the same name and the same values.
 #'
 #' @param fixations Data.frame. Long-format fixation table.
 #' @param layout Data.frame. AOI layout including boundary columns (`aoi`, `x`,
@@ -14,7 +15,10 @@
 #' @param metadata Data.frame or `NULL`. Eye tracker recording settings.
 #' @param responses Data.frame or `NULL`. Participant responses.
 #' @param subclass Character(1). Subclass name added to the class vector.
-#' @param ... Additional named slots forwarded as list elements.
+#' @param ... Additional named slots forwarded as list elements. Every subclass
+#'   constructor must supply `id_cols`, the single `_id` column identifying a
+#'   recording, resolved via `.resolve_id_cols()`. `validate_mpr_eyetracking()`
+#'   enforces its presence.
 #'
 #' @returns An S3 list with class `c(subclass, "mpr_eyetracking")`.
 #'
@@ -52,9 +56,10 @@ mpr_eyetracking <- function(
 #' Internal subclass constructor for the EyeLink / ExperimentBuilder data
 #' pipeline. Passes all arguments through to [mpr_eyetracking()].
 #'
-#' If `metadata` or `responses` are provided, they and `fixations` must contain
-#' **exactly one** column whose name ends with `_id` indicating grouping of the
-#' data (e.g., participant ID or a single run ID within repeated recordings.)
+#' `fixations` must contain **exactly one** column whose name ends with `_id`,
+#' identifying the recording (e.g. participant ID, or a run ID within repeated
+#' recordings). When `metadata` or `responses` are supplied, they must carry a
+#' column of the same name and the same values.
 #'
 #' @param fixations Data.frame. Long-format fixation table as produced
 #'   by [import_eyelink_data()].
@@ -64,6 +69,9 @@ mpr_eyetracking <- function(
 #'   returned by [import_eyelink_data()].
 #' @param responses Data.frame or `NULL`. Participant responses as
 #'   returned by [import_eyelink_data()].
+#' @param call Environment for error reporting, forwarded to
+#'   `.resolve_id_cols()` so identifier failures are attributed to
+#'   [build_eyelink_eyetracking()] rather than to this internal constructor.
 #'
 #' @returns An S3 list with class
 #'   `c("mpr_eyelink_eyetracking", "mpr_eyetracking")`.
@@ -73,14 +81,16 @@ mpr_eyelink_eyetracking <- function(
     fixations,
     layout,
     metadata = NULL,
-    responses = NULL
+    responses = NULL,
+    call = rlang::caller_env()
 ) {
   mpr_eyetracking(
     fixations = fixations,
     layout    = layout,
     metadata  = metadata,
     responses = responses,
-    subclass  = "mpr_eyelink_eyetracking"
+    subclass  = "mpr_eyelink_eyetracking",
+    id_cols   = .resolve_id_cols(fixations, "fixations", call = call)
   )
 }
 

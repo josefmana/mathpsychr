@@ -95,7 +95,7 @@
   }
 
   # --- Grouping structure -----------------------------------------------------
-  id_cols    <- names(x$fixations)[endsWith(names(x$fixations), "_id")]
+  id_cols    <- x$id_cols
   join_by_id <- intersect(id_cols, names(x$responses))
   grp_full   <- unique(c(id_cols, grp_vars))
 

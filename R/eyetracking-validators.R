@@ -17,17 +17,44 @@
 )
 
 
+#' Resolve the single recording-identifier column of a data.frame
+#'
+#' The identifier is a property of the dataset, not of any derivative, so it is
+#' resolved once at construction and stored on the object. Every consumer reads
+#' `x$id_cols` rather than re-deriving it.
+#'
+#' @param data Data.frame to inspect.
+#' @param arg Character(1). Name used in the error message.
+#' @param call Environment for error reporting.
+#'
+#' @returns Character(1). The identifier column name.
+#'
+#' @noRd
+.resolve_id_cols <- function(data, arg, call = rlang::caller_env()) {
+  id_cols <- names(data)[endsWith(names(data), "_id")]
+  if (length(id_cols) != 1L) {
+    cli::cli_abort(c(
+            "`{arg}` must contain exactly one column whose name ends with {.val _id}.",
+      "x" = "Found {length(id_cols)}: {.val {id_cols}}.",
+      "i" = "This column identifies a recording (e.g. participant, or a run within repeated recordings)."
+    ), call = call)
+  }
+  id_cols
+}
+
+
 #' Validate shared constraints of any `mpr_eyetracking` object
 #'
 #' Domain-level checks shared across all subclasses. Each subclass
 #' validator must call this first, then add its own checks.
 #'
 #' @param x An `mpr_eyetracking` object.
+#' @param call Environment for error reporting.
 #'
 #' @returns `x` invisibly on success, an informative error otherwise.
 #'
 #' @noRd
-validate_mpr_eyetracking <- function(x) {
+validate_mpr_eyetracking <- function(x, call = rlang::caller_env()) {
   if (!is_mpr_eyetracking(x)) {
     cli::cli_abort(c(
       "`x` must inherit from 'mpr_eyetracking'."
@@ -82,17 +109,18 @@ validate_mpr_eyetracking <- function(x) {
   }
 
   # --- dataset identifiers ----------------------------------------------------
+  if (length(x$id_cols) != 1L || !x$id_cols %in% names(x$fixations)) {
+    cli::cli_abort(c(
+            "`x$id_cols` must name exactly one column present in `fixations`.",
+      "x" = "Found {.val {x$id_cols}}.",
+      "i" = "Objects are expected to come from {.fn build_eyelink_eyetracking}, which resolves this at construction."
+    ))
+  }
+
   if (!is.null(x$metadata) || !is.null(x$responses)) {
 
-    # fixations
-    fix_id_cols <- names(x$fixations)[endsWith(names(x$fixations), "_id")]
-    if (length(fix_id_cols) != 1L) {
-      cli::cli_abort(c(
-              "If `metadata` or `responses` are provided, `fixations` must contain exactly one column ending with '_id'.",
-        "x" = "Found {length(fix_id_cols)} columns: {.val {fix_id_cols}}."
-      ))
-    }
-
+    # --- fixations ------------------------------------------------------------
+    fix_id_cols <- x$id_cols
     fix_id_vals <- unique(x$fixations[[fix_id_cols]])
 
     # --- metadata -------------------------------------------------------------
@@ -106,13 +134,7 @@ validate_mpr_eyetracking <- function(x) {
         ))
       }
 
-      meta_id_cols <- names(x$metadata)[endsWith(names(x$metadata), "_id")]
-      if (length(meta_id_cols) != 1L) {
-        cli::cli_abort(c(
-                "`metadata` must contain exactly one column ending with '_id'.",
-          "x" = "Found {length(meta_id_cols)} columns: {.val {meta_id_cols}}."
-        ))
-      }
+      meta_id_cols <- .resolve_id_cols(x$metadata, "metadata", call = call)
       if (fix_id_cols != meta_id_cols) {
         cli::cli_abort(c(
                 "The '_id' columns in `fixations` and `metadata` must have the same name.",
@@ -154,13 +176,7 @@ validate_mpr_eyetracking <- function(x) {
         ))
       }
 
-      resp_id_cols <- names(x$responses)[endsWith(names(x$responses), "_id")]
-      if (length(resp_id_cols) != 1L) {
-        cli::cli_abort(c(
-                "`responses` must contain exactly one column ending with '_id'.",
-          "x" = "Found {length(resp_id_cols)} column{?s}: {.val {resp_id_cols}}."
-        ))
-      }
+      resp_id_cols <- .resolve_id_cols(x$responses, "responses", call = call)
       if (resp_id_cols != fix_id_cols) {
         cli::cli_abort(c(
                 "The '_id' columns in `fixations` and `responses` must have the same name.",
@@ -210,12 +226,13 @@ validate_mpr_eyetracking <- function(x) {
 #' specific to the EyeLink subclass.
 #'
 #' @param x An `mpr_eyelink_eyetracking` object.
+#' @param call Environment for error reporting.
 #'
 #' @returns `x` invisibly on success; an informative error otherwise.
 #'
 #' @noRd
-validate_mpr_eyelink_eyetracking <- function(x) {
-  x <- validate_mpr_eyetracking(x)
+validate_mpr_eyelink_eyetracking <- function(x, call = rlang::caller_env()) {
+  x <- validate_mpr_eyetracking(x, call = call)
 
   missing_fixation_cols <- setdiff(
     .required_eyelink_fixation_cols,
