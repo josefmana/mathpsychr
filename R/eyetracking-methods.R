@@ -1,33 +1,40 @@
+#' Format an `mpr_eyetracking` object
+#'
+#' @param x An `mpr_eyetracking` object.
+#' @param ... Currently unused.
+#'
+#' @returns A character vector, one element per line of the header block.
+#'
+#' @export
+format.mpr_eyetracking <- function(x, ...) {
+  c(
+    "<mpr_eyetracking>",
+    sprintf("  subclass : %s", class(x)[1L]),
+    sprintf(
+      "  fixations: %d rows x %d cols",
+      nrow(x$fixations), ncol(x$fixations)
+    ),
+    sprintf(
+      "  layout   : %d AOI(s) -- %s",
+      nrow(x$layout), paste(x$layout$aoi, collapse = ", ")
+    ),
+    sprintf("  width    : %s", .fmt_vec(x$layout$w, digits = 3L)),
+    sprintf("  height   : %s", .fmt_vec(x$layout$h, digits = 3L))
+  )
+}
+
+
 #' Print an `mpr_eyetracking` object
 #'
 #' @param x An `mpr_eyetracking` object.
-#' @param n Integer(1). Number of rows of `$derivatives` to show via [head()].
-#'   Defaults to 6.
-#' @param ... Currently unused.
+#' @param n Integer(1). Number of rows of `$derivatives` to show. Defaults to 6.
+#' @param ... Passed to [format.mpr_eyetracking()].
 #'
 #' @returns `x` invisibly.
 #'
-#' @family eyetracking
-#'
 #' @export
 print.mpr_eyetracking <- function(x, n = 6L, ...) {
-  cat(sprintf(
-    "<mpr_eyetracking>\n  subclass : %s\n", class(x)[1L]
-  ))
-  cat(sprintf(
-    "  fixations: %d rows x %d cols\n",
-    nrow(x$fixations), ncol(x$fixations)
-  ))
-  cat(sprintf(
-    "  layout   : %d AOI(s) -- %s\n",
-    nrow(x$layout),
-    paste(x$layout$aoi, collapse = ", ")
-  ))
-  cat(sprintf(
-    "  width    : %s\n  height   : %s\n",
-    .fmt_vec(x$layout$w, digits = 3L),
-    .fmt_vec(x$layout$h, digits = 3L)
-  ))
+  cat(format(x, ...), sep = "\n")
   cat("\n")
 
   if (is.null(x$derivatives)) {
@@ -44,46 +51,22 @@ print.mpr_eyetracking <- function(x, n = 6L, ...) {
 }
 
 
-#' Format an `mpr_eyetracking` object as a string
-#'
-#' @param x An `mpr_eyetracking` object.
-#' @param ... Currently unused.
-#'
-#' @returns A single character string giving a compact description of the
-#'   object.
-#'
-#' @family eyetracking
-#'
-#' @export
-format.mpr_eyetracking <- function(x, ...) {
-  sprintf(
-    "<mpr_eyetracking: %s, n_fixations = %d, n_aoi = %d>",
-    class(x)[1L],
-    nrow(x$fixations),
-    nrow(x$layout)
-  )
-}
-
-
 #' Coerce an `mpr_eyetracking` object to a data.frame
 #'
-#' Returns `x$derivatives` if available, or `NULL` with a warning.
+#' Returns `x$derivatives` if available.
 #'
 #' @param x An `mpr_eyetracking` object.
 #' @param ... Currently unused.
 #'
-#' @returns A `data.frame` (the `$derivatives` slot), or
-#'   `NULL` when [process()] has not yet been called.
-#'
-#' @family eyetracking
+#' @returns A `data.frame` (the `$derivatives` slot). Throws an error when
+#'   [process()] has not yet been called.
 #'
 #' @export
 as.data.frame.mpr_eyetracking <- function(x, ...) {
   if (is.null(x$derivatives)) {
-    cli::cli_alert_danger(
-      "No derived data available: `process()` has not been called. Returning NULL."
+    cli::cli_abort(
+      "No derived data available: `process()` has not been called."
     )
-    return(NULL)
   }
   as.data.frame(x$derivatives)
 }
