@@ -1,65 +1,3 @@
-# Valid eye-tracking statistics
-.valid_gaze_stats <- c(
-  "fixation_count",
-  "dwell_time_total",
-  "dwell_time_mean",
-  "dwell_time_median",
-  "dwell_time_sd",
-  "switches_direct",
-  "switches_total",
-  "revisits_count",
-  "transitions_ref_to_ref",
-  "direct_transitions_ref_to_ref",
-  "transitions_query_refs",
-  "direct_transitions_query_refs",
-  "transitions_query_ref1",
-  "direct_transitions_query_ref1",
-  "transitions_query_ref2",
-  "direct_transitions_query_ref2",
-  "first_fixation_start",
-  "first_reference_fixation_start",
-  "first_fixated_aoi",
-  "first_fixated_reference",
-  "last_fixation_end",
-  "last_reference_fixation_end",
-  "last_fixated_aoi",
-  "last_fixated_reference",
-  "watch_time"
-)
-
-# Transition statistics that require `query_aoi` and `reference_aois`
-.transitions_gaze_stats <- c(
-  "transitions_ref_to_ref",
-  "direct_transitions_ref_to_ref",
-  "transitions_query_refs",
-  "direct_transitions_query_refs",
-  "transitions_query_ref1",
-  "direct_transitions_query_ref1",
-  "transitions_query_ref2",
-  "direct_transitions_query_ref2"
-)
-
-# Reference-related statistics that require `reference_aois`
-.reference_gaze_stats <- c(
-  "first_reference_fixation_start",
-  "first_fixated_reference",
-  "last_reference_fixation_end",
-  "last_fixated_reference"
-)
-
-# Structural fills for eye tracking statistics
-.et_measure_fills <- list(
-  fixation_count         = 0L,
-  revisits_count         = 0L,
-  switches_total         = 0L,
-  transitions_ref_to_ref = 0L,
-  transitions_query_refs = 0L,
-  transitions_query_ref1 = 0L,
-  transitions_query_ref2 = 0L,
-  dwell_time_total       = 0
-)
-
-
 #' Compute trial-level grouped eye-tracking measures
 #'
 #' Using export from EyeLink eye-tracking experiment in Experimental Builder,
@@ -71,12 +9,12 @@
 #'   identification. These variables need to be present in both `x$fixations`
 #'   and `x$responses`
 #' @param grp_vars Character vector of grouping variable names, or `NULL`.
-#'   The analysis is not stratified by `grp_vars` in this step, bacause only
+#'   The analysis is not stratified by `grp_vars` in this step, because only
 #'   grouping variables that would alter results would need to be intra-trial.
 #'   Instead, the function assumes each trial must fall within a single group,
 #'   and `grp_vars` are saved as an attribute and kept in data for future use.
 #' @param stats Character vector of statistics to compute; validated against
-#'   `.valid_gaze_stats`.
+#'   `mathpsychr:::.valid_gaze_stats`.
 #' @param window Numeric. Upper bound on fixation `etime`; `Inf` keeps all.
 #' @param query_aoi Character(1). Label of the query AOI, or `NULL`. Required
 #'   only for `transitions_*` statistics.
@@ -85,9 +23,9 @@
 #'
 #' @returns A data.frame with one row per identifier x `trial_vars` x `grp_vars`
 #'   x `aoi` combination and one column per requested statistic. Carries
-#'   `id_cols`, `trial_vars`, and `grp_vars` as attributes so that
-#'   later computation and plotting can average over correct levels withou the
-#'   need to re-supply them.
+#'   `id_cols`, `trial_vars`, and `grp_vars` as attributes so that later
+#'   computation and plotting can average over correct levels without the need
+#'   to re-supply them.
 #'
 #' @noRd
 .process_gaze_measures <- function(
@@ -156,12 +94,12 @@
       ))
     } else {
       missing_grps <- grp_vars[!grp_vars %in% names(x$responses)]
-      if (length(missing_grps) > 1L) {
+      if (length(missing_grps) > 0L) {
         grp_vars <- grp_vars[grp_vars %in% names(x$responses)]
         cli::cli_warn(c(
           "",
           "!" = "All specified `grp_vars` must be present in `x$responses`.",
-          "i" = "{.val {missing_grps}} {?was/were} specified as `grp_vars` but {?is/are} missing from `x$response`.",
+          "i" = "{.val {missing_grps}} {?was/were} specified as `grp_vars` but {?is/are} missing from `x$responses`.",
           "i" = "Dropping {.val {missing_grps}} from `grp_vars`.",
           "i" = "Remaining `grp_vars`: {.val {grp_vars}}."
         ))
@@ -182,7 +120,7 @@
   }
 
   # --- Grouping structure -----------------------------------------------------
-  id_cols  <- names(x$fixations)[endsWith(names(x$fixations), "_id")]
+  id_cols  <- x$id_cols
   grp_full <- unique(c(id_cols, trial_vars))
 
   if (is.null(query_aoi)) {
@@ -393,8 +331,8 @@
     dplyr::left_join(ref_stats, by = grp_full) |>
     dplyr::mutate(
       dplyr::across(
-        tidyselect::any_of(names(.et_measure_fills)),
-        \(v) dplyr::coalesce(v, .et_measure_fills[[dplyr::cur_column()]])
+        tidyselect::any_of(names(.gaze_measure_fills)),
+        \(v) dplyr::coalesce(v, .gaze_measure_fills[[dplyr::cur_column()]])
       )
     )
 

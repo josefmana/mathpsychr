@@ -9,23 +9,6 @@
 }
 
 
-#' Build a human-readable group name from one or more grouping columns
-#'
-#' @param df Data.frame containing the `colour_by` columns.
-#' @param colour_by Character vector of column names.
-#'
-#' @returns Character vector, one entry per row of `df`.
-#'
-#' @noRd
-.group_display_name <- function(df, colour_by) {
-  if (length(colour_by) == 1L) {
-    as.character(df[[colour_by]])
-  } else {
-    do.call(paste, c(unname(as.list(df[colour_by])), list(sep = " / ")))
-  }
-}
-
-
 #' Coefficient of determination via the sum-of-squares definition
 #'
 #' @param y Numeric. Observed values.
@@ -300,7 +283,7 @@
 #'   relative to the response.
 #'
 #' @noRd
-.summarise_cascade <- function(data, n_bins, window, alpha, by = NULL) {
+.summarise_cascade <- function(data, n_bins, window, alpha = 0.05, by = NULL) {
   grp <- c(by, "bin")
   data |>
     dplyr::group_by(dplyr::across(tidyselect::all_of(grp))) |>

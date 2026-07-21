@@ -30,6 +30,66 @@
 }
 
 
+#' Annotate fixation data with AOIs
+#'
+#' Given an AOI `layout`, add for each recorded fixation in `data` the `aoi`
+#' that was fixated. Fixations that fall outside every AOI are preserved with
+#' `NA` in the `aoi` column.
+#'
+#' @param data Fixation data, following the naming conventions of
+#'   [import_eyelink_data()].
+#' @param layout Data.frame of AOI geometry containing at least the boundary
+#'   columns `aoi`, `xleft`, `xright`, `ybottom`, and `ytop`.
+#'
+#' @returns `data` with an added `aoi` column.
+#'
+#' @noRd
+.annotate_fixations <- function(data, layout) {
+  original_cols <- colnames(data)
+
+  data_aoi_fixated <-
+    data |>
+    dplyr::cross_join(layout) |>
+    dplyr::filter(
+      .data$axp >= .data$xleft, .data$axp <= .data$xright,
+      .data$ayp >= .data$ybottom, .data$ayp <= .data$ytop
+    ) |>
+    dplyr::select(
+      tidyselect::all_of(c(original_cols, "aoi"))
+    )
+
+  result <- dplyr::left_join(
+    data,
+    data_aoi_fixated,
+    by = original_cols
+  )
+
+  # Guard against overlapping AOIs
+  if (nrow(result) > nrow(data)) {
+    multi_aoi <-
+      data_aoi_fixated |>
+      dplyr::group_by(
+        dplyr::across(tidyselect::all_of(original_cols))
+      ) |>
+      dplyr::summarise(n_aoi = dplyr::n(), .groups = "drop") |>
+      dplyr::filter(.data$n_aoi > 1L)
+
+    offending <- which(
+      do.call(paste, data[original_cols]) %in%
+        do.call(paste, multi_aoi[original_cols])
+    )
+
+    cli::cli_abort(c(
+            "`layout` contains overlapping AOIs.",
+      "x" = "{length(offending)} fixation row{?s} matched multiple AOIs.",
+      "i" = "Affected fixation row{?s}: {.val {offending}}."
+    ))
+  }
+
+  result
+}
+
+
 #' Recode AOIs by task-relevant role
 #'
 #' Joins `x$responses[[chosen_aoi_col]]` onto the long-format `x$derivatives`
@@ -37,7 +97,7 @@
 #' participant's response, either by appending new columns (default) or by
 #' rewriting the existing AOI-label columns in place.
 #'
-#' @param x An `mpr_gaze_measrues` object.
+#' @param x An `mpr_gaze_measures` object.
 #' @param chosen_aoi_col Character(1). Column in `x$responses` holding the
 #'   chosen AOI label.
 #' @param response_opts Character vector of AOIs that count as candidate
@@ -141,10 +201,10 @@ annotate_chosen_aoi <- function(
           .data$.chosen_aoi,
           response_opts
         ),
-        .after = .data$aoi
+        .after = "aoi"
       ) |>
       dplyr::rename(chosen_aoi = ".chosen_aoi") |>
-      dplyr::relocate(.data$chosen_aoi, .after = .data$aoi)
+      dplyr::relocate("chosen_aoi", .after = "aoi")
   }
 
   x$derivatives <- .carry_derivative_attrs(
