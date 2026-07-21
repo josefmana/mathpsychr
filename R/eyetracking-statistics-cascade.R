@@ -290,6 +290,7 @@
 #'   at least `bin` and `average_prop_chosen`.
 #' @param n_bins Integer(1). Number of equal-width time bins.
 #' @param window Numeric(1). Width of the cascade time window in seconds.
+#' @param alpha Numeric(1). Significance level.
 #' @param by Character vector of additional grouping columns to aggregate
 #'   within (typically the `facet_by` variable), or `NULL` (default) for a
 #'   single grand average across all clusters.
@@ -299,7 +300,7 @@
 #'   relative to the response.
 #'
 #' @noRd
-.summarise_cascade <- function(data, n_bins, window, by = NULL) {
+.summarise_cascade <- function(data, n_bins, window, alpha, by = NULL) {
   grp <- c(by, "bin")
   data |>
     dplyr::group_by(dplyr::across(tidyselect::all_of(grp))) |>
@@ -310,7 +311,7 @@
       .groups = "drop"
     ) |>
     dplyr::mutate(
-      .crit   = stats::qt(0.975, df = pmax(.data$n - 1L, 1L)),
+      .crit   = stats::qt(1 - alpha / 2, df = pmax(.data$n - 1L, 1L)),
       ci_low  = .data$mean_prop - .data$.crit * .data$se,
       ci_high = .data$mean_prop + .data$.crit * .data$se,
       time    = (.data$bin - 0.5) * window / n_bins - window

@@ -184,11 +184,11 @@
 #' grand average (`show_grand_avg = TRUE`), whenever `x` was processed with
 #' `grp_vars` set (from which `plot.mpr_gaze_cascade()` derives
 #' `colour_by`). A single fit type with `show_grand_avg = FALSE` is handled
-#' elsewhere -- see [.plot_cascade_single_or_grouped()] -- since with only
-#' one curve type requested there is nothing to compare side by side.
-#' Individual cluster curves and CI ribbons are never shown in this mode:
-#' with one curve per group per panel, cluster spaghetti and uncertainty
-#' bands would compete with the group comparison the plot exists to make.
+#' elsewhere (see [.plot_cascade_single_or_grouped()]) since with only one
+#' curve type requested there is nothing to compare side by side. Individual
+#' cluster curves and CI ribbons are never shown in this mode: with one curve
+#' per group per panel, cluster spaghetti and uncertainty bands would compete
+#' with the group comparison the plot exists to make.
 #'
 #' Each panel gets its own legend, drawn inside the panel (see
 #' [.build_curve_facet_panel()]) so it doesn't cost width in a side-by-side
@@ -212,9 +212,9 @@
 #'
 #' @noRd
 .plot_cascade_by_curve_type <- function(
-    x, window, n_bins, colour_by, show_grand_avg, fit_type
+    x, window, n_bins, colour_by, show_grand_avg, fit_type, alpha
 ) {
-  df_grand <- .summarise_cascade(x$derivatives, n_bins, window, by = colour_by)
+  df_grand <- .summarise_cascade(x$derivatives, n_bins, window, alpha, by = colour_by)
 
   base_palette <- .cascade_group_palette(.group_display_name(df_grand, colour_by))
   panels <- list()
@@ -290,7 +290,7 @@
 #'
 #' @noRd
 .plot_cascade_single_or_grouped <- function(
-    x, window, n_bins, show_clusters, show_grand_avg, fit_type, colour_by
+    x, window, n_bins, show_clusters, show_grand_avg, fit_type, colour_by, alpha
 ) {
   faceted <- !is.null(colour_by)
 
@@ -317,7 +317,7 @@
     )
 
   # --- Grand average & curve fits ----------------------------------------------
-  df_grand <- .summarise_cascade(x$derivatives, n_bins, window, by = colour_by)
+  df_grand <- .summarise_cascade(x$derivatives, n_bins, window, alpha, by = colour_by)
 
   df_sigmoid <- if (fit_type %in% c("sigmoid", "both")) {
     .compute_cascade_fit(df_grand, colour_by, .fit_cascade_sigmoid)
@@ -355,6 +355,12 @@
     "Grand Average"
   }
 
+  ci_label <- if (show_grand_avg) {
+    paste0(format(100 * (1 - alpha), trim = TRUE), "% CI")
+  } else {
+    NULL
+  }
+
   ga_palette <- if (faceted) {
     .cascade_group_palette(grand_avg_names)
   } else {
@@ -371,7 +377,7 @@
 
   # --- Legend palette ---------------------------------------------------------
   legend_items <- c(
-    if (show_grand_avg && !faceted) "95% CI",
+    if (show_grand_avg && !faceted) ci_label,
     grand_avg_names,
     sigmoid_label, # NULL entries dropped silently by c()
     piecewise_label,
@@ -379,7 +385,7 @@
   )
 
   colour_vals <- c(
-    if (show_grand_avg && !faceted) c("95% CI" = "#2C7FB8"),
+    if (show_grand_avg && !faceted) rlang::set_names("#2C7FB8", ci_label),
     if (show_grand_avg) ga_palette,
     if (!is.null(sigmoid_label))   stats::setNames("#C0392B", sigmoid_label),
     if (!is.null(piecewise_label)) stats::setNames("#27AE60", piecewise_label),
@@ -393,8 +399,8 @@
   .linetype  <- rep("solid",       n_items)
   .linewidth <- rep(fit_lwd,       n_items)
 
-  ci_pos <- match("95% CI", legend_items)
-  if (!is.na(ci_pos)) {
+  ci_pos <- match(ci_label %||% NA_character_, legend_items)
+  if (length(ci_pos) == 1L && !is.na(ci_pos)) {
     .shape[ci_pos]     <- 15L
     .fill[ci_pos]      <- scales::alpha("#2C7FB8", 0.35)
     .size[ci_pos]      <- 6
@@ -489,7 +495,7 @@
           x = .data$time,
           ymin = .data$ci_low,
           ymax = .data$ci_high,
-          colour = "95% CI"
+          colour = ci_label
         ),
         alpha     = 0.2,
         linewidth = 0,
@@ -559,7 +565,7 @@
 #'
 #' Produces a gaze-cascade plot from an `mpr_gaze_cascade` object. Individual
 #' cluster curves (e.g., per-participant) are optionally drawn in grey behind
-#' the grand-average line and its 95% CI ribbon. One or both of a four-parameter
+#' the grand-average line and its CI ribbon. One or both of a four-parameter
 #' sigmoid and a piecewise linear model can be overlaid.
 #'
 #' If `process(..., type = "cascade")` was called with `grp_vars` set, the
@@ -573,8 +579,8 @@
 #'   curves in the background. Defaults to `TRUE`. Ignored (never drawn)
 #'   when faceting by curve type; see Details.
 #' @param show_grand_avg Logical(1). Whether to draw the grand-average line
-#'   (and, outside of curve-type faceting, its 95% CI ribbon). Defaults to
-#'   `TRUE`. Set to `FALSE` to show fit curves only. Interacts with
+#'   (and, outside of curve-type faceting, its 1 - `alpha` CI ribbon). Defaults
+#'   to `TRUE`. Set to `FALSE` to show fit curves only. Interacts with
 #'   `fit_type` when `x` is grouped; see Details.
 #' @param fit_type Character(1). Which curve model(s) to overlay: `"sigmoid"`
 #'   (default), `"piecewise"`, `"both"`, or `"none"`. The sigmoid is a
@@ -584,6 +590,8 @@
 #'   corresponding layer or panel is silently dropped. When `x` is grouped
 #'   (see Details on `grp_vars`), `fit_type` also determines the plot's
 #'   overall layout; see Details.
+#' @param alpha Numeric(1). Significance level for grand average line. Relevant
+#'   when `show_grand_avg` is `TRUE`. Defaults to `0.05` for 95% CI ribbon.
 #' @param ... Currently unused.
 #'
 #' @details
@@ -626,6 +634,7 @@ plot.mpr_gaze_cascade <- function(
     show_clusters  = TRUE,
     show_grand_avg = TRUE,
     fit_type       = c("sigmoid", "piecewise", "both", "none"),
+    alpha          = 0.05,
     ...
 ) {
   # --- Preconditions ----------------------------------------------------------
@@ -666,10 +675,10 @@ plot.mpr_gaze_cascade <- function(
   single_fit_only <- fit_type %in% c("sigmoid", "piecewise") && !show_grand_avg
 
   if (grouped_by && fit_type != "none" && !single_fit_only) {
-    return(.plot_cascade_by_curve_type(x, window, n_bins, colour_by, show_grand_avg, fit_type))
+    return(.plot_cascade_by_curve_type(x, window, n_bins, colour_by, show_grand_avg, fit_type, alpha))
   }
 
   .plot_cascade_single_or_grouped(
-    x, window, n_bins, show_clusters, show_grand_avg, fit_type, colour_by
+    x, window, n_bins, show_clusters, show_grand_avg, fit_type, colour_by, alpha
   )
 }
