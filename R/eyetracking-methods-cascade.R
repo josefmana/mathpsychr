@@ -44,7 +44,7 @@
       ) |>
       gt::cols_align(
         align = "center",
-        columns = -.data$parameter_label
+        columns = -"parameter_label"
       ) |>
       gt::tab_stub_indent(rows = TRUE, indent = 3)
 
@@ -92,7 +92,7 @@
     ) |>
     gt::cols_align(
       align = "center",
-      columns = -.data$parameter_label
+      columns = -"parameter_label"
     ) |>
     gt::cols_hide(
       columns = c("ci_low", "ci_high")
@@ -129,7 +129,7 @@
     dplyr::mutate(
       ci_display = sprintf("[%.3f, %.3f]", .data$ci_low, .data$ci_high),
       fit_type = .fit_type_display[.data$fit_type],
-      .before = .data$p_value
+      .before = "p_value"
     ) |>
     dplyr::select(-"parameter")
 
@@ -184,8 +184,6 @@
 #'
 #' @returns A `gt_tbl` object.
 #'
-#' @family eyetracking
-#'
 #' @export
 as_gt.mpr_gaze_cascade_fit <- function(x, type = c("estimates", "differences"), ...) {
   type <- match.arg(type)
@@ -215,10 +213,11 @@ as_gt.mpr_gaze_cascade_fit <- function(x, type = c("estimates", "differences"), 
 #'
 #' @returns `x` invisibly.
 #'
-#' @family eyetracking
-#'
 #' @export
 print.mpr_gaze_cascade_fit <- function(x, ...) {
+  cli::cli_inform(c(
+    "i" = "This is an exploratory summary. See the notes {.fn compute} emitted when this object was built."
+  ))
   print(as_gt(x, ...))
   invisible(x)
 }

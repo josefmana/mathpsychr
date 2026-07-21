@@ -1,31 +1,3 @@
-#' Shared theme for gaze-cascade plots
-#'
-#' `plot.title` (used by curve-type panel titles, e.g. "Sigmoid Fits") and
-#' `strip.text` (used by [ggplot2::facet_wrap()] panel labels) are both
-#' bold and centred, so that however a plot ends up split into multiple
-#' panels -- via `facet_wrap()` or via side-by-side `patchwork` panels --
-#' the per-panel heading looks the same. Both are no-ops on a plot that has
-#' neither a title nor facets.
-#'
-#' @noRd
-.et_cascade_theme <- function() {
-  ggplot2::theme_classic(base_size = 11) +
-    ggplot2::theme(
-      legend.position = "right",
-      legend.background = ggplot2::element_rect(
-        fill = "white",
-        colour = "grey80",
-        linewidth = 0.4
-      ),
-      legend.key = ggplot2::element_blank(),
-      legend.text = ggplot2::element_text(size = 10),
-      legend.spacing.y = ggplot2::unit(2, "pt"),
-      plot.title = ggplot2::element_text(face = "bold", hjust = 0.5),
-      strip.text = ggplot2::element_text(face = "bold", hjust = 0.5)
-    )
-}
-
-
 #' Count distinct clusters within each colour-by group
 #'
 #' @param cascade_data `x$derivatives` augmented with a `cluster` column
@@ -40,28 +12,6 @@
   cascade_data |>
     dplyr::distinct(dplyr::across(tidyselect::all_of(c(colour_by, "cluster")))) |>
     dplyr::count(dplyr::across(tidyselect::all_of(colour_by)), name = "n")
-}
-
-
-#' Assign a stable colour to each group name
-#'
-#' Used so that a given group (e.g., `"Low"`) gets the same colour in every
-#' panel of a curve-type-faceted plot, even though each panel's legend
-#' labels differ (they carry panel-specific statistics).
-#'
-#' @param group_names Character vector of group names (duplicates allowed).
-#'
-#' @returns A named character vector of colours, named by group.
-#'
-#' @noRd
-.cascade_group_palette <- function(group_names) {
-  lvls <- sort(unique(group_names))
-  base <- if (length(lvls) <= 3L) {
-    c("#C0392B", "#F1A208", "#27AE60")[seq_along(lvls)]
-  } else {
-    scales::hue_pal()(length(lvls))
-  }
-  stats::setNames(base, lvls)
 }
 
 
@@ -108,8 +58,9 @@
 #' @param colour_by Character vector of grouping column names.
 #' @param title Character(1). Panel title.
 #' @param window Numeric(1). Width of the cascade time window in seconds.
-#' @param base_palette Named character vector from [.cascade_group_palette()],
-#'   named by plain group name (shared across panels for colour consistency).
+#' @param base_palette Named character vector from
+#'   [.eyetracking_group_palette()], named by plain group name (shared across
+#'   panels for colour consistency).
 #' @param show_y_label Logical(1). Whether to draw the y-axis title.
 #'
 #' @returns A [ggplot2::ggplot()] object.
@@ -158,7 +109,7 @@
       x = "Time before decision (s)",
       y = if (show_y_label) "Likelihood of fixating chosen image" else NULL
     ) +
-    .et_cascade_theme() +
+    .eyetracking_plot_theme() +
     ggplot2::theme(
       legend.position = "inside",
       legend.position.inside = c(0.02, 0.98),
@@ -216,12 +167,12 @@
 ) {
   df_grand <- .summarise_cascade(x$derivatives, n_bins, window, alpha, by = colour_by)
 
-  base_palette <- .cascade_group_palette(.group_display_name(df_grand, colour_by))
+  base_palette <- .eyetracking_group_palette(.group_display_name(df_grand, colour_by))
   panels <- list()
 
   if (show_grand_avg) {
     label_df <- .cascade_group_labels(df_grand, colour_by)
-    panel_data <- dplyr::rename(df_grand, y = .data$mean_prop)
+    panel_data <- dplyr::rename(df_grand, y = "mean_prop")
     panels[["Grand Average"]] <- .build_curve_facet_panel(
       panel_data, label_df, colour_by, "Grand Average", window, base_palette,
       show_y_label = length(panels) == 0L
@@ -232,7 +183,7 @@
     fit_df <- .fit_cascade_by_group(df_grand, colour_by, .fit_cascade_sigmoid)
     if (nrow(fit_df) > 0L) {
       label_df <- .cascade_group_labels(fit_df, colour_by, stat_cols = "r2")
-      panel_data <- dplyr::rename(fit_df, y = .data$y_fit)
+      panel_data <- dplyr::rename(fit_df, y = "y_fit")
       panels[["Sigmoid Fits"]] <- .build_curve_facet_panel(
         panel_data, label_df, colour_by, "Sigmoid Fits", window, base_palette,
         show_y_label = length(panels) == 0L
@@ -244,7 +195,7 @@
     fit_df <- .fit_cascade_by_group(df_grand, colour_by, .fit_cascade_piecewise)
     if (nrow(fit_df) > 0L) {
       label_df <- .cascade_group_labels(fit_df, colour_by, stat_cols = "r2")
-      panel_data <- dplyr::rename(fit_df, y = .data$y_fit)
+      panel_data <- dplyr::rename(fit_df, y = "y_fit")
       panels[["Piecewise Linear Fits"]] <- .build_curve_facet_panel(
         panel_data, label_df, colour_by, "Piecewise Linear Fits", window, base_palette,
         show_y_label = length(panels) == 0L
@@ -362,7 +313,7 @@
   }
 
   ga_palette <- if (faceted) {
-    .cascade_group_palette(grand_avg_names)
+    .eyetracking_group_palette(grand_avg_names)
   } else {
     c("Grand Average" = "#2C7FB8")
   }
@@ -551,7 +502,7 @@
       x = "Time before decision (s)",
       y = "Likelihood of fixating chosen image"
     ) +
-    .et_cascade_theme()
+    .eyetracking_plot_theme()
 
   if (faceted) {
     p <- p + ggplot2::facet_wrap(ggplot2::vars(!!!rlang::syms(colour_by)))
@@ -625,8 +576,6 @@
 #'
 #' @returns A [ggplot2::ggplot()] object, or (when comparing two or three
 #'   curve-type panels side by side) a `patchwork` object.
-#'
-#' @family eyetracking
 #'
 #' @export
 plot.mpr_gaze_cascade <- function(

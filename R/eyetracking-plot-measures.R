@@ -1,9 +1,8 @@
 #' Shared group colour/fill scale for gaze-measure plots
 #'
-#' Folds `.cascade_group_palette()`/`.group_display_name()` (shared with the
-#' gaze-cascade plots in `eyetracking-plot.R`) into a ready-to-use discrete
-#' scale, so [.plot_measures_violin()] (fill) and [.plot_measures_scatter()]
-#' (colour) build their legend the same way the cascade plots do.
+#' Folds `.eyetracking_group_palette()`/`.group_display_name()` into a
+#' ready-to-use discrete scale, so [.plot_measures_violin()] (fill) and
+#' [.plot_measures_scatter()] (colour) build their legend correctly.
 #'
 #' @param data Data.frame carrying `group_col`.
 #' @param group_col Character(1). Column name to colour/fill by.
@@ -20,7 +19,7 @@
 ) {
   aesthetic <- match.arg(aesthetic)
   data$.grp_label <- .group_display_name(data, group_col)
-  palette <- .cascade_group_palette(data$.grp_label)
+  palette <- .eyetracking_group_palette(data$.grp_label)
 
   scale <- if (aesthetic == "fill") {
     ggplot2::scale_fill_manual(name = name, values = palette)
@@ -215,7 +214,7 @@
       labeller = facet_labeller
     ) +
     ggplot2::labs(x = x_lab, y = "Value") +
-    .et_cascade_theme()
+    .eyetracking_plot_theme()
 }
 
 
@@ -511,7 +510,7 @@
     data <- dplyr::left_join(data, label_df[c("group2_level", "label")], by = c(".join_key" = "group2_level"))
     data$.join_key <- NULL
 
-    palette <- .cascade_group_palette(label_df$label)
+    palette <- .eyetracking_group_palette(label_df$label)
 
     p <- p +
       ggplot2::geom_smooth(
@@ -566,7 +565,7 @@
 
   p <- p +
     ggplot2::labs(x = x_lab, y = y_lab, title = panel_title) +
-    .et_cascade_theme()
+    .eyetracking_plot_theme()
 
   if (compact_legend && !is.null(colour_by)) {
     p <- p +
@@ -754,8 +753,6 @@
 #' internally.
 #'
 #' @returns A [ggplot2::ggplot()] object, or a `patchwork` object.
-#'
-#' @family eyetracking
 #'
 #' @export
 plot.mpr_gaze_measures_comparison <- function(

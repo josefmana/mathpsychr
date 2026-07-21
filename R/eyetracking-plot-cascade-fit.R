@@ -4,7 +4,7 @@
 #' [compute.mpr_gaze_cascade()] was asked for. This validates a user-supplied
 #' subset against what is actually stored on `x`.
 #'
-#' @param x An `mpr_cascade_fit` object.
+#' @param x An `mpr_gaze_cascade_fit` object.
 #' @param fit_type Character or `NULL`. Requested subset.
 #'
 #' @returns Character vector of fit-type keys, in `x$fits` order.
@@ -61,7 +61,7 @@
 
 #' Bootstrap draws for one fit type, one row per draw x group
 #'
-#' @param x An `mpr_cascade_fit` object.
+#' @param x An `mpr_gaze_cascade_fit` object.
 #' @param fit_name Character(1). `"sigmoid"` or `"piecewise"`.
 #' @param parameters Character. Parameter keys to keep, in display order.
 #'
@@ -134,7 +134,7 @@
 
 #' Per-fit-type caption recording bootstrap effort and interval type
 #'
-#' @param x An `mpr_cascade_fit` object.
+#' @param x An `mpr_gaze_cascade_fit` object.
 #' @param fit_name Character(1).
 #'
 #' @returns Character(1).
@@ -172,7 +172,7 @@
 #' Tolerates `NULL` so objects computed before the fit-health report existed
 #' still plot.
 #'
-#' @param x An `mpr_cascade_fit` object.
+#' @param x An `mpr_gaze_cascade_fit` object.
 #' @param fit_name Character(1).
 #' @param threshold Numeric(1). Minimum share of resamples before a flag is
 #'   worth mentioning.
@@ -207,7 +207,7 @@
 #' parameters live on incomparable scales (`L`/`U` are proportions, `k` ranges
 #' to 30, `t0` is in seconds).
 #'
-#' @param x An `mpr_cascade_fit` object.
+#' @param x An `mpr_gaze_cascade_fit` object.
 #' @param fit_name Character(1). `"sigmoid"` or `"piecewise"`.
 #' @param parameters Character. Parameter keys, in display order.
 #' @param title Character(1) or `NULL`. Panel title.
@@ -236,7 +236,7 @@
     levels = .label_cascade_param(parameters, fit_name)
   )
 
-  palette <- .cascade_group_palette(df$group_name)
+  palette <- .eyetracking_group_palette(df$group_name)
 
   p <- ggplot2::ggplot(
     df,
@@ -269,7 +269,7 @@
       y = if (grouped) NULL else "",
       caption = .cascade_boot_caption(x, fit_name)
     ) +
-    .et_cascade_theme()
+    .eyetracking_plot_theme()
 
   if (!grouped) {
     p <- p + ggplot2::theme(
@@ -357,7 +357,7 @@
       y = NULL,
       caption = .cascade_boot_caption(x, fit_name)
     ) +
-    .et_cascade_theme()
+    .eyetracking_plot_theme()
 }
 
 
@@ -380,7 +380,7 @@
 ) {
   long    <- .cascade_draws_long(x, fit_name, parameters)
   grouped <- !is.null(x$grp_vars)
-  palette <- .cascade_group_palette(long$group_name)
+  palette <- .eyetracking_group_palette(long$group_name)
 
   ref <- dplyr::filter(
     x$param_summary,
@@ -440,7 +440,7 @@
         sep = "\n"
       )
     ) +
-    .et_cascade_theme()
+    .eyetracking_plot_theme()
 
   if (grouped) {
     p + ggh4x::facet_grid2(
@@ -519,7 +519,7 @@
   wide    <- .cascade_draws_wide(x, fit_name, parameters)
   long    <- .cascade_pairs_long(wide, parameters, fit_name)
   grouped <- !is.null(x$grp_vars)
-  palette <- .cascade_group_palette(long$group_name)
+  palette <- .eyetracking_group_palette(long$group_name)
 
   cors <- long |>
     dplyr::group_by(.data$group_name, .data$x_label, .data$y_label) |>
@@ -586,7 +586,7 @@
         sep = "\n"
       )
     ) +
-    .et_cascade_theme() +
+    .eyetracking_plot_theme() +
     ggplot2::theme(
       strip.placement = "outside",
       strip.text.y.left = ggplot2::element_text(angle = 90)
@@ -594,15 +594,15 @@
 }
 
 
-#' Plot an `mpr_cascade_fit` object
+#' Plot an `mpr_gaze_cascade_fit` object
 #'
 #' Two families of view over a bootstrapped gaze-cascade fit:
 #' * *inference* (`type = "estimates"`, `"differences"`) reads the same summary
-#'   tables [as_gt.mpr_cascade_fit()] renders,
+#'   tables [as_gt.mpr_gaze_cascade_fit()] renders,
 #' * *diagnostics* (`type = "histogram"`, `"pairs"`) read the raw bootstrap
 #'   draws stored in `x$fits`.
 #'
-#' @param x An `mpr_cascade_fit` object, as returned by
+#' @param x An `mpr_gaze_cascade_fit` object, as returned by
 #'   [compute.mpr_gaze_cascade()].
 #' @param type Character(1).
 #'   \describe{
@@ -615,7 +615,7 @@
 #'       `compute()` was run without `grp_vars`.}
 #'     \item{`"histogram"`}{Marginal distribution of each parameter's bootstrap
 #'       draws, with point estimate and CI bounds overlaid. Read for
-#'       bimodality, spikes at a box constraint, and skew; see Details.}
+#'       bimodality, and skew; see Details.}
 #'     \item{`"pairs"`}{Scatter matrix of the draws, one panel per parameter
 #'       pair with its Pearson correlation, for diagnosing parameter
 #'       collinearity; see Details.}
@@ -650,7 +650,7 @@
 #'   preferable.
 #'
 #' `type = "pairs"` shows the joint distribution. A tight diagonal ridge
-#' between two parameters means the data do not identify them separately,so
+#' between two parameters means the data do not identify them separately, so
 #' their marginal intervals understate the joint uncertainty, and neither
 #' parameter should be interpreted while holding the other fixed.
 #'
@@ -661,9 +661,7 @@
 #' @returns A [ggplot2::ggplot()] object, or a `patchwork` object when more
 #'   than one fit type is plotted.
 #'
-#' @seealso [compute.mpr_gaze_cascade()], [as_gt.mpr_cascade_fit()]
-#'
-#' @family eyetracking
+#' @seealso [compute.mpr_gaze_cascade()], [as_gt.mpr_gaze_cascade_fit()]
 #'
 #' @export
 plot.mpr_gaze_cascade_fit <- function(

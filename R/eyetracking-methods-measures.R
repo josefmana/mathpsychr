@@ -598,8 +598,6 @@
 #'
 #' @seealso [compute.mpr_gaze_measures()]
 #'
-#' @family eyetracking
-#'
 #' @export
 as_gt.mpr_gaze_measures_comparison <- function(
     x,
@@ -656,11 +654,8 @@ as_gt.mpr_gaze_measures_comparison <- function(
 #'
 #' @export
 print.mpr_gaze_measures_comparison <- function(x, ...) {
-  cli::cli_warn(c(
-    "",
-    "!" = "This table is a horoscope, not a model: a descriptive summary of whatever tests {.fn compute} was told to run, not a validated causal or confirmatory account of the data.",
-    "i" = "Regard it as exploratory look at your data.",
-    "i" = "For statistical inference, build and interpret model(s) bestowed to your study design, research question(s), and data."
+  cli::cli_inform(c(
+    "i" = "This is an exploratory summary. See the notes {.fn compute} emitted when this object was built."
   ))
 
   if (is.null(x$test_summary)) {

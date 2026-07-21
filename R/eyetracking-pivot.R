@@ -94,8 +94,6 @@
 #' @param derivatives A wide-format `derivatives` data.frame, as produced by
 #'   `.flatten_gaze_measures()`, carrying a `pivot_spec` attribute.
 #'
-#'  @family eyetracking
-#'
 #' @returns `derivatives`, pivoted back long, carrying the same bookkeeping
 #'   attributes and `shape = "long"`.
 #'
@@ -130,8 +128,6 @@
 #'   `chosen_aoi = TRUE`.
 #'
 #' @seealso [annotate_chosen_aoi()], [lengthen()]
-#'
-#' @family eyetracking
 #'
 #' @export
 flatten.mpr_gaze_measures <- function(
