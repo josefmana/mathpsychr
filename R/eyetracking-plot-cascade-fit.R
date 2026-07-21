@@ -364,7 +364,7 @@
 #' Marginal histogram panel for one fit type
 #'
 #' Shows the shape of each parameter's bootstrap distribution. Read it
-#' for bimodality, hard spikes at a box constraint, and heavy skew.
+#' for bimodality, and heavy skew.
 #'
 #' Groups are faceted rather than overlaid: overlapping semi-transparent
 #' histograms hide exactly the bimodality this panel exists to reveal.
@@ -640,16 +640,11 @@
 #' numbers meaningful.
 #'
 #' `type = "histogram"` shows each parameter's marginal draw distribution.
-#' Three features matter:
+#' Two features matter the most:
 #' * **Bimodality**: the optimiser is settling into two distinct basins
 #'   depending on which recordings a resample happens to contain. A percentile
 #'   CI spanning both modes describes an interval the parameter is rarely
 #'   actually in.
-#' * **A spike at a bound**: [stats::nls()] is called with `algorithm = "port"`
-#'   under box constraints, which are absorbing. A resample driven onto a bound
-#'   stays there. A visible point mass at, say, exactly `0.30` means the
-#'   reported CI endpoint is a property of the constraint rather than of the
-#'   data.
 #' * **Heavy skew**: the regime in which the percentile interval is least
 #'   accurate and a bias-corrected-and-accelerated (BCa) interval would be
 #'   preferable.

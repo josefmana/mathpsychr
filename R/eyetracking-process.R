@@ -1,10 +1,3 @@
-# Valid types of derived data
-.valid_process_types <- c(
-  "measures",
-  "cascade"
-)
-
-
 #' Annotate fixation data with AOIs
 #'
 #' Given an AOI `layout`, add for each recorded fixation in `data` the `aoi`
@@ -73,7 +66,7 @@ process.mpr_eyelink_eyetracking <- function(
     type = c("measures", "cascade"),
     trial_vars = "trial_index",
     grp_vars = NULL,
-    stats = c("fix_count", "dwell_total"),
+    stats = c("fixation_count", "dwell_time_total"),
     window = Inf,
     query_aoi = NULL,
     reference_aois = NULL,
@@ -82,20 +75,7 @@ process.mpr_eyelink_eyetracking <- function(
     chosen_aoi_col = "chosen_aoi",
     ...
 ) {
-  # --- Validate `type` --------------------------------------------------------
   type <- match.arg(type)
-  if (missing(type)) {
-    cli::cli_abort(c(
-            "`type` is required and has no default.",
-      "i" = "Choose one of {.val {(.valid_process_types)}}."
-    ))
-  }
-  if (!rlang::is_string(type) || !type %in% .valid_process_types) {
-    cli::cli_abort(c(
-            "`type` must be one of {.val {(.valid_process_types)}}.",
-      "x" = "Received {.val {type}}."
-    ))
-  }
 
   # --- Warn on type-irrelevant arguments supplied with non-default values -----
   if (type == "measures") {
@@ -106,7 +86,7 @@ process.mpr_eyelink_eyetracking <- function(
     )
   } else if (type == "cascade") {
     irrelevant <- c(
-      if (!identical(stats, c("fix_count", "dwell_total"))) "stats",
+      if (!identical(stats, c("fixation_count", "dwell_time_total"))) "stats",
       if (!is.null(query_aoi)) "query_aoi",
       if (!is.null(reference_aois)) "reference_aois"
     )

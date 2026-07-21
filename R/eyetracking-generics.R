@@ -24,9 +24,7 @@
 #' @param grp_vars Character vector of additional grouping variable names
 #'   present in `x$fixations` (and in `x$responses` when
 #'   `type = "cascade"`), or `NULL` (default) for no extra grouping beyond
-#'   the identifier column. When `type = "measures"`, `trial_vars` will be
-#'   automatically appended to `grp_vars` before processing, because measures
-#'   computation must be stratified by trials for it to be valid.
+#'   the identifier column.
 #' @param stats Character vector of statistics to compute. Only used when
 #'   `type = "measures"`. Defaults to `c("fix_count", "dwell_total")`. Valid
 #'   values:
@@ -171,7 +169,7 @@ flatten.default <- function(x, ...) {
 #'   `mpr_gaze_measures`).
 #' @param ... Additional arguments passed to methods.
 #'
-#' @returns The original class object with added `shape = "wide"` and
+#' @returns The original class object with added `shape = "long"` and
 #'   `pivot_spec` attributes, and data in `x$derivatives` pivoted.
 #'
 #' @export

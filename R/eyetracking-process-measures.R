@@ -30,9 +30,13 @@
 # Transition statistics that require `query_aoi` and `reference_aois`
 .transitions_et_stats <- c(
   "transitions_ref_to_ref",
+  "direct_transitions_ref_to_ref",
   "transitions_query_refs",
+  "direct_transitions_query_refs",
   "transitions_query_ref1",
-  "transitions_query_ref2"
+  "direct_transitions_query_ref1",
+  "transitions_query_ref2",
+  "direct_transitions_query_ref2"
 )
 
 # Reference-related statistics that require `reference_aois`
@@ -86,7 +90,7 @@
 #'   need to re-supply them.
 #'
 #' @noRd
-.process_et_measures <- function(
+.process_gaze_measures <- function(
     x,
     trial_vars,
     grp_vars,
@@ -152,7 +156,7 @@
       ))
     } else {
       missing_grps <- grp_vars[!grp_vars %in% names(x$responses)]
-      if (length(missing_grps > 1L)) {
+      if (length(missing_grps) > 1L) {
         grp_vars <- grp_vars[grp_vars %in% names(x$responses)]
         cli::cli_warn(c(
           "",

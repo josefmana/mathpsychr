@@ -683,12 +683,10 @@
 #' enough to be worth modelling properly. Do not consider its outputs as the
 #' analysis itself!
 #'
-#' Both curves are fit with self-starting models ([stats::SSfpl] and
-#' [nlraa::SSplin]), which means no start values and no box constraints. Fits
-#' are therefore free to land anywhere, even at implausible values (e.g., an
-#' upper asymptote below the lower one, a breakpoint outside the observed
-#' window). `x$fits[[type]]$health` reports how often that happened across
-#' resamples.
+#' Both curves are fitted with no box constraints. Fits are therefore free to
+#' land anywhere, even at implausible values (e.g., an upper asymptote below
+#' the lower one, a breakpoint outside the observed window).
+#' `x$fits[[type]]$health` reports how often that happened across resamples.
 #'
 #' Resampling and interval construction are delegated to `{boot}`. The
 #' underlying object is returned on `x$boot`, and `x$spec` maps its columns to
