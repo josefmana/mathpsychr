@@ -80,7 +80,7 @@
 #' Resolve AOI-specific statistic columns present in `derivatives`
 #'
 #' Thin wrapper around [.match_aoi_specific_cols()] (from
-#' `eyetracking-reshape.R`), which returns an *unnamed* subset of `cols`
+#' `eyetracking-pivot.R`), which returns an *unnamed* subset of `cols`
 #' (stripping the optional `_{window}` suffix), so downstream code can label
 #' results by base stat regardless of which window the object was processed
 #' with.
@@ -101,7 +101,7 @@
 
 #' Resolve Stimulus-scope statistic columns present in `derivatives`
 #'
-#' Unlike `.match_aoi_specific_cols()` (scoped in `eyetracking-reshape.R` to
+#' Unlike `.match_aoi_specific_cols()` (scoped in `eyetracking-pivot.R` to
 #' statistics that vary by AOI, for pivot-spec purposes), Stimulus-scope
 #' statistics do not need special AOI-aware pivot handling. Instead, they are
 #' ordinary columns, optionally window-suffixed like every other requested
@@ -205,7 +205,7 @@
 #' Collapse trial-level measures to one row per identifier x scope-relevant
 #' grouping (x AOI, for AOI-scope statistics)
 #'
-#' AOI-scope statistics are averaged over `trial_cols`, grouped by identifier
+#' AOI-scope statistics are averaged over `trial_vars`, grouped by identifier
 #' x AOI x `stratify_vars`.
 #'
 #' Stimulus-scope statistics do not vary by AOI within a trial.
@@ -220,7 +220,7 @@
 #'
 #' @param derivatives `mpr_gaze_measures` object `$derivatives`.
 #' @param id_cols Character. Identifier column(s).
-#' @param trial_cols Character. Trial-identifying column(s).
+#' @param trial_vars Character. Trial-identifying column(s).
 #' @param aoi_stat_cols,stimulus_stat_cols Named character vectors from
 #'   [.resolve_measure_stat_cols()] (names = base stat, values = actual
 #'   column name), split by scope.
@@ -233,7 +233,7 @@
 #'
 #' @noRd
 .average_measures_participant <- function(
-    derivatives, id_cols, trial_cols, aoi_stat_cols, stimulus_stat_cols, stratify_vars
+    derivatives, id_cols, trial_vars, aoi_stat_cols, stimulus_stat_cols, stratify_vars
 ) {
   aoi_avg <- if (length(aoi_stat_cols) == 0L) {
     NULL
@@ -263,10 +263,10 @@
     grp_stim <- unique(c(id_cols, stratify_vars))
     derivatives |>
       dplyr::rename(!!!stimulus_stat_cols) |>
-      dplyr::select(tidyselect::all_of(c(id_cols, trial_cols, stratify_vars, names(stimulus_stat_cols)))) |>
+      dplyr::select(tidyselect::all_of(c(id_cols, trial_vars, stratify_vars, names(stimulus_stat_cols)))) |>
       dplyr::distinct() |>
       tidyr::pivot_longer(
-        !tidyselect::all_of(unique(c(id_cols, trial_cols, stratify_vars))),
+        !tidyselect::all_of(unique(c(id_cols, trial_vars, stratify_vars))),
         names_to = "measure",
         values_to = "value"
       ) |>
@@ -302,7 +302,7 @@
 #'
 #' @param derivatives `mpr_gaze_measures` object `$derivatives`.
 #' @param id_cols Character. Identifier column(s).
-#' @param trial_cols Character. Trial-identifying column(s).
+#' @param trial_vars Character. Trial-identifying column(s).
 #' @param categorical_cols Named character vector from
 #'   [.resolve_measure_stat_cols()] (names = base stat, values = actual
 #'   column name), `scope == "categorical"` rows only.
@@ -316,7 +316,7 @@
 #'
 #' @noRd
 .count_measures_participant <- function(
-    derivatives, id_cols, trial_cols, categorical_cols, stratify_vars
+    derivatives, id_cols, trial_vars, categorical_cols, stratify_vars
 ) {
   if (length(categorical_cols) == 0L) {
     return(NULL)
@@ -327,10 +327,10 @@
   counts <-
     derivatives |>
     dplyr::rename(!!!categorical_cols) |>
-    dplyr::select(tidyselect::all_of(c(id_cols, trial_cols, stratify_vars, names(categorical_cols)))) |>
+    dplyr::select(tidyselect::all_of(c(id_cols, trial_vars, stratify_vars, names(categorical_cols)))) |>
     dplyr::distinct() |>
     tidyr::pivot_longer(
-      !tidyselect::all_of(unique(c(id_cols, trial_cols, stratify_vars))),
+      !tidyselect::all_of(unique(c(id_cols, trial_vars, stratify_vars))),
       names_to = "measure",
       values_to = "category"
     ) |>
@@ -1055,7 +1055,7 @@ compute.mpr_gaze_measures <- function(
   }
 
   id_cols <- attr(derivatives, "id_cols")
-  trial_cols <- attr(derivatives, "trial_cols")
+  trial_vars <- attr(derivatives, "trial_vars")
   grp_vars <- attr(derivatives, "grp_vars")
   stratify_vars <- if (isTRUE(by_group)) grp_vars else NULL
 
@@ -1064,8 +1064,8 @@ compute.mpr_gaze_measures <- function(
   stimulus_cols <- rlang::set_names(stat_map$col[stat_map$scope == "stimulus"], stat_map$stat[stat_map$scope == "stimulus"])
   categorical_cols <- rlang::set_names(stat_map$col[stat_map$scope == "categorical"], stat_map$stat[stat_map$scope == "categorical"])
 
-  cat_counts <- .count_measures_participant(derivatives, id_cols, trial_cols, categorical_cols, stratify_vars)
-  cont_data <- .average_measures_participant(derivatives, id_cols, trial_cols, aoi_cols, stimulus_cols, stratify_vars)
+  cat_counts <- .count_measures_participant(derivatives, id_cols, trial_vars, categorical_cols, stratify_vars)
+  cont_data <- .average_measures_participant(derivatives, id_cols, trial_vars, aoi_cols, stimulus_cols, stratify_vars)
 
   avg_data <- dplyr::bind_rows(
     cont_data,

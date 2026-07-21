@@ -7,7 +7,7 @@
 \alias{compute}
 \alias{compute.default}
 \alias{compute.mpr_gelman_carlin_power}
-\title{Compute results for an \verb{mpr_*} analysis object}
+\title{Compute results for a \{mathpsychr\} object}
 \usage{
 \method{compute}{mpr_gaze_cascade}(
   x,
@@ -167,12 +167,10 @@ indicating where the curve turns, how steeply or whether groups differ
 enough to be worth modelling properly. Do not consider its outputs as the
 analysis itself!
 
-Both curves are fit with self-starting models (\link[stats:SSfpl]{stats::SSfpl} and
-\link[nlraa:SSplin]{nlraa::SSplin}), which means no start values and no box constraints. Fits
-are therefore free to land anywhere, even at implausible values (e.g., an
-upper asymptote below the lower one, a breakpoint outside the observed
-window). \code{x$fits[[type]]$health} reports how often that happened across
-resamples.
+Both curves are fitted with no box constraints. Fits are therefore free to
+land anywhere, even at implausible values (e.g., an upper asymptote below
+the lower one, a breakpoint outside the observed window).
+\code{x$fits[[type]]$health} reports how often that happened across resamples.
 
 Resampling and interval construction are delegated to \code{{boot}}. The
 underlying object is returned on \code{x$boot}, and \code{x$spec} maps its columns to

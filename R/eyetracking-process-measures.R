@@ -1,5 +1,5 @@
 # Valid eye-tracking statistics
-.valid_et_stats <- c(
+.valid_gaze_stats <- c(
   "fixation_count",
   "dwell_time_total",
   "dwell_time_mean",
@@ -28,7 +28,7 @@
 )
 
 # Transition statistics that require `query_aoi` and `reference_aois`
-.transitions_et_stats <- c(
+.transitions_gaze_stats <- c(
   "transitions_ref_to_ref",
   "direct_transitions_ref_to_ref",
   "transitions_query_refs",
@@ -40,7 +40,7 @@
 )
 
 # Reference-related statistics that require `reference_aois`
-.reference_et_stats <- c(
+.reference_gaze_stats <- c(
   "first_reference_fixation_start",
   "first_fixated_reference",
   "last_reference_fixation_end",
@@ -76,7 +76,7 @@
 #'   Instead, the function assumes each trial must fall within a single group,
 #'   and `grp_vars` are saved as an attribute and kept in data for future use.
 #' @param stats Character vector of statistics to compute; validated against
-#'   `.valid_et_stats`.
+#'   `.valid_gaze_stats`.
 #' @param window Numeric. Upper bound on fixation `etime`; `Inf` keeps all.
 #' @param query_aoi Character(1). Label of the query AOI, or `NULL`. Required
 #'   only for `transitions_*` statistics.
@@ -85,7 +85,7 @@
 #'
 #' @returns A data.frame with one row per identifier x `trial_vars` x `grp_vars`
 #'   x `aoi` combination and one column per requested statistic. Carries
-#'   `id_cols`, `trial_cols`, and `grp_vars` as attributes so that
+#'   `id_cols`, `trial_vars`, and `grp_vars` as attributes so that
 #'   later computation and plotting can average over correct levels withou the
 #'   need to re-supply them.
 #'
@@ -100,15 +100,15 @@
     reference_aois
 ) {
   # --- Validate requested statistics ------------------------------------------
-  unknown_stats <- setdiff(stats, c(.valid_et_stats, "all"))
+  unknown_stats <- setdiff(stats, c(.valid_gaze_stats, "all"))
   if (length(unknown_stats) > 0L) {
     cli::cli_abort(c(
             "Unknown statistic{?s} requested in `stats`: {.val {unknown_stats}}.",
-      "i" = "Valid statistics are: {.val {(.valid_et_stats)}}."
+      "i" = "Valid statistics are: {.val {(.valid_gaze_stats)}}."
     ))
   }
 
-  requested_transitions <- intersect(stats, .transitions_et_stats)
+  requested_transitions <- intersect(stats, .transitions_gaze_stats)
   if (length(requested_transitions) > 0L) {
     if (is.null(query_aoi) || is.null(reference_aois)) {
       cli::cli_abort(c(
@@ -127,7 +127,7 @@
     }
   }
 
-  requested_reference_stats <- intersect(stats, .reference_et_stats)
+  requested_reference_stats <- intersect(stats, .reference_gaze_stats)
   if (length(requested_reference_stats) > 0L) {
     if (is.null(reference_aois)) {
       cli::cli_abort(c(
@@ -175,9 +175,9 @@
       stats_display <- if (is.null(stats)) "NULL" else stats
       cli::cli_inform(c(
         "i" = "`stats` set to {.val {stats_display}} \u2192 all available statistics will be computed.",
-        "i" = "Computing all of {.val {(.valid_et_stats)}}."
+        "i" = "Computing all of {.val {(.valid_gaze_stats)}}."
       ))
-      stats <- .valid_et_stats
+      stats <- .valid_gaze_stats
     }
   }
 
@@ -429,7 +429,7 @@
     )
 
   attr(output, "id_cols")    <- id_cols
-  attr(output, "trial_cols") <- trial_vars
+  attr(output, "trial_vars") <- trial_vars
   attr(output, "grp_vars")   <- grp_vars
   output
 }

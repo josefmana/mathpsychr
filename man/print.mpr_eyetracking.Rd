@@ -23,12 +23,13 @@ Print an \code{mpr_eyetracking} object
 \seealso{
 Other eyetracking: 
 \code{\link{as.data.frame.mpr_eyetracking}()},
-\code{\link{as_gt.mpr_cascade_fit}()},
+\code{\link{as_gt.mpr_gaze_cascade_fit}()},
 \code{\link{as_gt.mpr_gaze_measures_comparison}()},
+\code{\link{flatten.mpr_gaze_measures}()},
 \code{\link{format.mpr_eyetracking}()},
-\code{\link{plot.mpr_cascade_fit}()},
 \code{\link{plot.mpr_gaze_cascade}()},
+\code{\link{plot.mpr_gaze_cascade_fit}()},
 \code{\link{plot.mpr_gaze_measures_comparison}()},
-\code{\link{print.mpr_cascade_fit}()}
+\code{\link{print.mpr_gaze_cascade_fit}()}
 }
 \concept{eyetracking}

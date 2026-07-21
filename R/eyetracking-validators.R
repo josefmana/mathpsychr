@@ -214,7 +214,7 @@ validate_mpr_eyetracking <- function(x) {
 #' @returns `x` invisibly on success; an informative error otherwise.
 #'
 #' @noRd
-validate_eyelink_eyetracking <- function(x) {
+validate_mpr_eyelink_eyetracking <- function(x) {
   x <- validate_mpr_eyetracking(x)
 
   missing_fixation_cols <- setdiff(
@@ -250,6 +250,6 @@ is_mpr_eyetracking <- function(x) {
 #' @returns `TRUE` iff `x` inherits from `"mpr_eyelink_eyetracking"`.
 #'
 #' @noRd
-is_eyelink_eyetracking <- function(x) {
+is_mpr_eyelink_eyetracking <- function(x) {
   inherits(x, "mpr_eyelink_eyetracking")
 }

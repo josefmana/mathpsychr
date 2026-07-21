@@ -100,7 +100,7 @@ process.mpr_eyelink_eyetracking <- function(
   # --- Dispatch to the appropriate worker -------------------------------------
   x$derivatives <- switch(
     type,
-    measures = .process_et_measures(
+    measures = .process_gaze_measures(
       x, trial_vars, grp_vars, stats, window, query_aoi, reference_aois
     ),
     cascade = .process_gaze_cascade(

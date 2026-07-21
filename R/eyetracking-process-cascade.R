@@ -36,7 +36,7 @@
   # --- Preconditions ----------------------------------------------------------
   if (is.null(x$responses)) {
     cli::cli_abort(c(
-      "Gaze-cascade analysis requires participant responses.",
+            "Gaze-cascade analysis requires participant responses.",
       "x" = "`x$responses` is `NULL`.",
       "i" = "Provide responses with `{response_time_col}` and `{chosen_aoi_col}` columns."
     ))
@@ -49,19 +49,19 @@
     ))
   }
 
-  response_missing_trial_cols <- setdiff(trial_vars, colnames(x$responses))
-  if (length(response_missing_trial_cols) > 0L) {
+  response_missing_trial_vars <- setdiff(trial_vars, colnames(x$responses))
+  if (length(response_missing_trial_vars) > 0L) {
     cli::cli_abort(c(
-      "`trial_cols` must be present in `x$responses`.",
-      "x" = "The following column{?} {?is/are} missing: {.var {response_missing_trial_cols}}."
+            "`trial_vars` must be present in `x$responses`.",
+      "x" = "The following column{?} {?is/are} missing: {.var {response_missing_trial_vars}}."
     ))
   }
 
-  fixations_missing_trial_cols <- setdiff(trial_vars, colnames(x$fixations))
-  if (length(fixations_missing_trial_cols) > 0L) {
+  fixations_missing_trial_vars <- setdiff(trial_vars, colnames(x$fixations))
+  if (length(fixations_missing_trial_vars) > 0L) {
     cli::cli_abort(c(
-      "`trial_cols` must be present in `x$fixations`.",
-      "x" = "The following column{?} {?is/are} missing: {.var {fixations_missing_trial_cols}}."
+            "`trial_vars` must be present in `x$fixations`.",
+      "x" = "The following column{?} {?is/are} missing: {.var {fixations_missing_trial_vars}}."
     ))
   }
 

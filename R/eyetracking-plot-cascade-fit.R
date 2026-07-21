@@ -32,7 +32,7 @@
 #' Canonical parameter order for one fit type
 #'
 #' Reads `.cascade_param_labels` (`eyetracking-compute-cascade.R`) so plots
-#' order parameters the same way [as_gt.mpr_cascade_fit()] does, rather than
+#' order parameters the same way [as_gt.mpr_gaze_cascade_fit()] does, rather than
 #' alphabetically.
 #'
 #' @param fit_name Character(1). `"sigmoid"` or `"piecewise"`.
@@ -666,7 +666,7 @@
 #' @family eyetracking
 #'
 #' @export
-plot.mpr_cascade_fit <- function(
+plot.mpr_gaze_cascade_fit <- function(
     x,
     type = c("estimates", "differences", "histogram", "pairs"),
     fit_type = NULL,

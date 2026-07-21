@@ -105,8 +105,8 @@ annotate_chosen_aoi <- function(
   }
 
   id_cols    <- attr(x$derivatives, "id_cols")
-  trial_cols <- attr(x$derivatives, "trial_cols")
-  join_by    <- intersect(c(id_cols, trial_cols), names(x$responses))
+  trial_vars <- attr(x$derivatives, "trial_vars")
+  join_by    <- intersect(c(id_cols, trial_vars), names(x$responses))
 
   resp <-
     x$responses |>

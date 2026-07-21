@@ -169,14 +169,14 @@
 }
 
 
-#' @describeIn as_gt Method for `mpr_cascade_fit` objects. Builds and returns
+#' @describeIn as_gt Method for `mpr_gaze_cascade_fit` objects. Builds and returns
 #'   a `{gt}` table of either bootstrapped gaze-cascade fit parameters
 #'   (`type = "estimates"`, the default) or between-group parameter
 #'   differences (`type = "differences"`), from `x$param_summary` /
 #'   `x$diff_summary` respectively. Tables are built fresh on every call
 #'   rather than stored on the object.
 #'
-#' @param x An `mpr_cascade_fit` object, as returned by
+#' @param x An `mpr_gaze_cascade_fit` object, as returned by
 #'   [compute.mpr_gaze_cascade()].
 #' @param type One of `"estimates"` (default) or `"differences"`.
 #'   `"differences"` requires `x$diff_summary` to be non-`NULL` (i.e.
@@ -187,7 +187,7 @@
 #' @family eyetracking
 #'
 #' @export
-as_gt.mpr_cascade_fit <- function(x, type = c("estimates", "differences"), ...) {
+as_gt.mpr_gaze_cascade_fit <- function(x, type = c("estimates", "differences"), ...) {
   type <- match.arg(type)
   if (type == "differences") {
     if (is.null(x$diff_summary)) {
@@ -203,13 +203,13 @@ as_gt.mpr_cascade_fit <- function(x, type = c("estimates", "differences"), ...) 
 }
 
 
-#' Print an `mpr_cascade_fit` object
+#' Print an `mpr_gaze_cascade_fit` object
 #'
 #' Builds a `{gt}` table via [as_gt()] and prints it. Interactive console
 #' use only. For R Markdown/vignette chunks, call [as_gt()] directly so
 #' knitr's normal rendering pipeline picks up the `{gt}` table.
 #'
-#' @param x An `mpr_cascade_fit` object, as returned by
+#' @param x An `mpr_gaze_cascade_fit` object, as returned by
 #'   [compute.mpr_gaze_cascade()].
 #' @param ... Passed to [as_gt()] (e.g. `type = "differences"`).
 #'
@@ -218,7 +218,7 @@ as_gt.mpr_cascade_fit <- function(x, type = c("estimates", "differences"), ...) 
 #' @family eyetracking
 #'
 #' @export
-print.mpr_cascade_fit <- function(x, ...) {
+print.mpr_gaze_cascade_fit <- function(x, ...) {
   print(as_gt(x, ...))
   invisible(x)
 }

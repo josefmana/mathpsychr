@@ -914,6 +914,6 @@ compute.mpr_gaze_cascade <- function(
       alpha = alpha,
       ci_type = ci_type
     ),
-    class = "mpr_cascade_fit"
+    class = "mpr_gaze_cascade_fit"
   )
 }

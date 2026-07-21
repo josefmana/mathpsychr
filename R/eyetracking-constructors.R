@@ -167,5 +167,5 @@ build_eyelink_eyetracking <- function(
   )
 
   obj <- mpr_eyelink_eyetracking(fixations, layout, metadata, responses)
-  validate_eyelink_eyetracking(obj)
+  validate_mpr_eyelink_eyetracking(obj)
 }

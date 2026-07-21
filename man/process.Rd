@@ -15,7 +15,7 @@ process(x, ...)
   type = c("measures", "cascade"),
   trial_vars = "trial_index",
   grp_vars = NULL,
-  stats = c("fix_count", "dwell_total"),
+  stats = c("fixation_count", "dwell_time_total"),
   window = Inf,
   query_aoi = NULL,
   reference_aois = NULL,
@@ -50,9 +50,7 @@ present in \code{x$fixations} and in \code{x$responses}.}
 \item{grp_vars}{Character vector of additional grouping variable names
 present in \code{x$fixations} (and in \code{x$responses} when
 \code{type = "cascade"}), or \code{NULL} (default) for no extra grouping beyond
-the identifier column. When \code{type = "measures"}, \code{trial_vars} will be
-automatically appended to \code{grp_vars} before processing, because measures
-computation must be stratified by trials for it to be valid.}
+the identifier column.}
 
 \item{stats}{Character vector of statistics to compute. Only used when
 \code{type = "measures"}. Defaults to \code{c("fix_count", "dwell_total")}. Valid

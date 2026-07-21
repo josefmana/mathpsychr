@@ -131,7 +131,7 @@
 #'   must be converted to ASC before using this function via the edf2asc
 #'   utility.
 #'
-#' @return A list with four components:
+#' @returns A list with four components:
 #' \describe{
 #'   \item{\code{meta_data}}{Tibble. Subject id and EyeLink settings. One row
 #'   per a dataset}

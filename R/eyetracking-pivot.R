@@ -11,8 +11,9 @@
 )
 
 # `.process_gaze_measures()` appends a `_{window}` suffix to stat columns when
-# `window` is finite (see eyetracking-process.R). Match the stat name with an
-# optional numeric suffix so flatten()/lengthen() work regardless of window.
+# `window` is finite (see eyetracking-process-measures.R). Match the stat name
+# with an optional numeric suffix so flatten()/lengthen() work regardless of
+# window.
 .match_aoi_specific_cols <- function(cols) {
   pattern <- paste0(
     "^(", paste(.aoi_specific_stats, collapse = "|"), ")(_[0-9.]+)?$"
@@ -30,7 +31,7 @@
 # Re-attach the bookkeeping attributes that pivoting must not disturb.
 .carry_derivative_attrs <- function(new, old, shape) {
   attr(new, "id_cols")    <- attr(old, "id_cols")
-  attr(new, "trial_cols") <- attr(old, "trial_cols")
+  attr(new, "trial_vars") <- attr(old, "trial_vars")
   attr(new, "grp_vars")   <- attr(old, "grp_vars")
   attr(new, "shape")      <- shape
   new
@@ -51,7 +52,7 @@
 #' [lengthen()] can reverse it exactly.
 #'
 #' @param derivatives A long-format `derivatives` data.frame, as produced by
-#'   `process(type = "measures")`, carrying `id_cols`, `trial_cols`, and
+#'   `process(type = "measures")`, carrying `id_cols`, `trial_vars`, and
 #'   `grp_vars` attributes.
 #'
 #' @returns `derivatives`, pivoted wide, carrying the same bookkeeping
@@ -93,6 +94,8 @@
 #' @param derivatives A wide-format `derivatives` data.frame, as produced by
 #'   `.flatten_gaze_measures()`, carrying a `pivot_spec` attribute.
 #'
+#'  @family eyetracking
+#'
 #' @returns `derivatives`, pivoted back long, carrying the same bookkeeping
 #'   attributes and `shape = "long"`.
 #'
@@ -127,6 +130,8 @@
 #'   `chosen_aoi = TRUE`.
 #'
 #' @seealso [annotate_chosen_aoi()], [lengthen()]
+#'
+#' @family eyetracking
 #'
 #' @export
 flatten.mpr_gaze_measures <- function(
