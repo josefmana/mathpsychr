@@ -137,8 +137,8 @@
   if (n_omnibus > 0L) {
     cli::cli_inform(c(
       "!" = "{n_omnibus} omnibus test{?s} across {n_tested} measure{?s}, plus {n_pairwise} pairwise comparison{?s}.",
-      "i" = "{.val {p_adjust_method}} adjustment applies {.emph within} each measure's post-hoc family, never across measures.",
-      "i" = "Read together, the family-wise error rate is not the one printed."
+      "i" = "{.val {p_adjust_method}} adjustment applied {.emph within} each measure's post-hoc family, not across measures.",
+      "i" = "Read the set of omnibus test results as unadjusted for multiple comparisons."
     ))
   }
 
