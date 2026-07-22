@@ -122,16 +122,6 @@
 }
 
 
-#' Display names for the [boot::boot.ci()] interval types `compute()` can request
-#' @noRd
-.cascade_ci_display <- c(
-  bca   = "BCa",
-  perc  = "percentile",
-  basic = "basic",
-  norm  = "normal-approximation"
-)
-
-
 #' Per-fit-type caption recording bootstrap effort and interval type
 #'
 #' @param x An `mpr_gaze_cascade_fit` object.
@@ -144,18 +134,11 @@
   boot_result <- x$fits[[fit_name]]
   n_ok <- boot_result$n_boot - boot_result$n_failed
 
-  ci_label <- if (is.null(x$ci_type)) {
-    "percentile"
-  } else {
-    unname(.cascade_ci_display[[x$ci_type]])
-  }
-
   sprintf(
-    "%s of %s resamples retained; %s %s intervals.",
+    "%s of %s resamples retained; %s CIs.",
     format(n_ok, big.mark = ","),
     format(boot_result$n_boot, big.mark = ","),
-    scales::percent(1 - x$alpha, accuracy = 1),
-    ci_label
+    scales::percent(1 - x$alpha, accuracy = 1)
   )
 }
 

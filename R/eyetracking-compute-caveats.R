@@ -18,8 +18,9 @@
 ) {
   if (nrow(fell_back) > 0L) {
     cli::cli_inform(c(
-      "!" = "{nrow(fell_back)} component{?s} fell back to a percentile interval; {.val {ci_type}} was not computable for {?it/them}.",
-      "i" = "Happens when every draw sits on one side of the point estimate. See {.code attr(x$param_summary, \"ci_fallback\")}."
+      "!" = "{nrow(fell_back)} component{?s} fell back to a percentile interval, because {.val {ci_type}} was not computable.",
+      "i" = "This happens when every draw sits on one side of the point estimate.",
+      "i" = "See {.code attr(x$param_summary, \"ci_fallback\")} for a list of affected components."
     ))
   }
 
@@ -43,8 +44,9 @@
   .warn_exploratory_use(
     subject = "These curves",
     bullets = c(
-      "Time bins are treated as independent observations of an aggregate. Trials and participants are not modelled.",
-      "The {.field p_value} in {.code x$diff_summary} inverts the bootstrap distribution; it is not a null-hypothesis test."
+      "Time bins are treated as independent observations of an aggregate. Trials and participants are not being modelled.",
+      "The {.field p_value} in {.code x$diff_summary} inverts the bootstrap distribution. It is not a null-hypothesis test.",
+      "The bootstrapping analysis is still under development, and comes with no guarantees. Use it with discretion."
     )
   )
 }

@@ -482,7 +482,7 @@
   boot_ok$R <- sum(ok)
 
   L <- if (need_influence) {
-    if (show_progress) cli::cli_progress_step("Jackknifing for BCa intervals", .envir = progress_env)
+    if (show_progress) cli::cli_progress_step("Manually jackknifing for BCa intervals", .envir = progress_env)
     out <- .cascade_influence(recordings, stat_fn, nrow(spec))
     if (show_progress) cli::cli_progress_done(.envir = progress_env)
     out
