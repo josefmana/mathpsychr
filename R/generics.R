@@ -26,12 +26,19 @@ compute.default <- function(x, ...) {
 }
 
 
-#' Coerce an `mpr_*` results object to a `{gt}` table
+#' Coerce an {mathpsychr} object to a `{gt}` table
 #'
 #' @param x An object with a registered `as_gt` method.
+#' @param type Character(1). Which table variant to build; permitted values
+#'   depend on the class of `x`:
+#'   * `mpr_gaze_cascade_fit`: `"estimates"` (default) or `"differences"`.
+#'   * `mpr_gaze_measures_comparison`: `"test"` (default), `"pairwise"`, or
+#'     `"descriptive"`.
 #' @param ... Additional arguments passed to methods.
 #'
 #' @returns A `gt_tbl` object.
+#'
+#' @seealso [compute()]
 #'
 #' @export
 as_gt <- function(x, ...) {

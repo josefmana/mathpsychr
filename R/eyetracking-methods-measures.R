@@ -38,8 +38,8 @@
 #'
 #' A `groupname_col` header per measure only earns its keep when a measure
 #' contributes more than one row: a two-way design's main effects plus
-#' interaction (`which = "test"`), or 3+ pairwise comparisons for a factor
-#' with 3+ levels (`which = "pairwise"`). When every measure in `df`
+#' interaction (`type = "test"`), or 3+ pairwise comparisons for a factor
+#' with 3+ levels (`type = "pairwise"`). When every measure in `df`
 #' contributes exactly one row, grouping collapses to singleton groups.
 #'
 #' @param df A `test_summary`/`pairwise_summary` scope-slice.
@@ -402,7 +402,7 @@
 #' @param scope Character(1). `"aoi"`/`"categorical"`/`"stimulus"`.
 #' @param stats Character or `NULL`. See [as_gt.mpr_gaze_measures_comparison()].
 #'
-#' @returns A `gt_tbl`.
+#' @returns A `gt_tbl` object.
 #'
 #' @noRd
 .gt_measures_pairwise <- function(x, scope, stats) {
@@ -558,55 +558,46 @@
 }
 
 
-#' Render an `mpr_gaze_measures_comparison` result as a `{gt}` table
+#' @describeIn as_gt Method for `mpr_gaze_measures_comparison` objects. Renders
+#'   the omnibus test summary (`type = "test"`, the default), post-hoc /
+#'   simple-effects pairwise comparisons (`type = "pairwise"`; errors if none
+#'   were computed), or per-level descriptive statistics (`type =
+#'   "descriptive"`; mean/SD/N, or proportion for categorical measures).
 #'
-#' @param x An `mpr_gaze_measures_comparison` object.
-#' @param which Character(1). `"test"` (default) for the omnibus test
-#'   summary, `"pairwise"` for post-hoc/simple-effects pairwise comparisons
-#'   (errors informatively if `NULL`), or `"descriptive"` for per-level
-#'   descriptive statistics (mean/SD/N, or proportion for categorical
-#'   measures).
 #' @param scope Character(1). One of `"aoi"` (default), `"categorical"`,
 #'   `"stimulus"`. Selects which scope's table to build. Overridden (with a
 #'   message) when `stats` is supplied and resolves unambiguously to a
-#'   different scope; see `stats` below.
+#'   different scope; see `stats`.
 #' @param stats Character or `NULL` (default). Optional subset of statistics to
-#'   table. All requested `stats` must belong to the same scope. When they do,
-#'   that scope is used in place of `scope` (and a message is emitted noting
-#'   the override). `NULL` (default) tables every statistic in the selected
-#'   `scope`.
-#' @param ... Currently unused.
+#'   table. All requested `stats` must belong to the same scope; when they do,
+#'   that scope replaces `scope` (with a message). `NULL` tables every
+#'   statistic in the selected `scope`.
 #'
 #' @details
-#' AOI-scope, categorical, and Stimulus-scope measures each get their own
-#' `{gt}` table. Only one scope is built per call (see `scope`). AOI-scope
-#' and categorical measures share a grouping shape (AOI/category x
-#' `grp_vars[1]`) but are still tabled separately, since a magnitude
-#' comparison across AOIs (AOI-scope, such as fixation count) and a
-#' location-proportion comparison across AOIs (categorical, such as the
-#' first AOI fixated) are conceptually distinct. Stimulus-scope measures use
-#' a third, unrelated grouping shape (`grp_vars[1:2]`; see
-#' `compute.mpr_gaze_measures()`).
+#' AOI-scope, categorical, and stimulus-scope measures each get their own
+#' `{gt}` table; only one scope is built per call (see `scope`). AOI-scope and
+#' categorical measures share a grouping shape (AOI/category x `grp_vars[1]`)
+#' but are tabled separately, since a magnitude comparison across AOIs
+#' (AOI-scope, e.g. fixation count) and a location-proportion comparison across
+#' AOIs (categorical, e.g. first AOI fixated) are conceptually distinct.
+#' Stimulus-scope measures use a third grouping shape (`grp_vars[1:2]`; see
+#' [compute.mpr_gaze_measures()]).
 #'
-#' **These tables summarise whatever `compute()` was told to test, i.e., they
-#' are not, on their own, evidence that the underlying design or assumptions
-#' were appropriate.** Multiple measures, each with its own omnibus test and
-#' post-hoc comparisons, are being read at once; treat the printed statistics
-#' as exploratory rather than a final verdict for your data analysis.
-#'
-#' @returns A `gt_tbl`.
-#'
-#' @seealso [compute.mpr_gaze_measures()]
+#' **These tables summarise whatever `compute()` was told to test; they are
+#' not, on their own, evidence that the design or assumptions were
+#' appropriate.** Multiple measures, each with its own omnibus test and
+#' post-hoc comparisons, are read at once; treat the printed statistics as
+#' exploratory rather than a final verdict.
 #'
 #' @export
 as_gt.mpr_gaze_measures_comparison <- function(
     x,
-    which = c("test", "pairwise", "descriptive"),
+    type  = c("test", "pairwise", "descriptive"),
     scope = c("aoi", "categorical", "stimulus"),
     stats = NULL,
     ...
 ) {
-  which <- match.arg(which)
+  type <- match.arg(type)
   scope <- match.arg(scope)
 
   if (!is.null(stats)) {
@@ -640,7 +631,7 @@ as_gt.mpr_gaze_measures_comparison <- function(
   }
 
   switch(
-    which,
+    type,
     test        = .gt_measures_test(x, scope, stats),
     pairwise    = .gt_measures_pairwise(x, scope, stats),
     descriptive = .gt_measures_descriptive(x, scope, stats)
@@ -649,7 +640,7 @@ as_gt.mpr_gaze_measures_comparison <- function(
 
 
 #' @describeIn as_gt.mpr_gaze_measures_comparison Print method (console use);
-#'   calls [as_gt()] with `which = "test"`. For R Markdown/vignette chunks,
+#'   calls [as_gt()] with `type = "test"`. For R Markdown/vignette chunks,
 #'   call [as_gt()] directly.
 #'
 #' @export
@@ -665,7 +656,7 @@ print.mpr_gaze_measures_comparison <- function(x, ...) {
     ))
   }
   scopes <- intersect(c("aoi", "categorical", "stimulus"), unique(x$test_summary$scope))
-  tbls <- lapply(scopes, function(sc) as_gt(x, which = "test", scope = sc))
+  tbls <- lapply(scopes, function(sc) as_gt(x, type = "test", scope = sc))
   print(gt::gt_group(.list = tbls))
 
   invisible(x)

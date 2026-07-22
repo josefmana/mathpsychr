@@ -169,20 +169,14 @@
 }
 
 
-#' @describeIn as_gt Method for `mpr_gaze_cascade_fit` objects. Builds and returns
-#'   a `{gt}` table of either bootstrapped gaze-cascade fit parameters
-#'   (`type = "estimates"`, the default) or between-group parameter
-#'   differences (`type = "differences"`), from `x$param_summary` /
-#'   `x$diff_summary` respectively. Tables are built fresh on every call
-#'   rather than stored on the object.
-#'
-#' @param x An `mpr_gaze_cascade_fit` object, as returned by
-#'   [compute.mpr_gaze_cascade()].
-#' @param type One of `"estimates"` (default) or `"differences"`.
-#'   `"differences"` requires `x$diff_summary` to be non-`NULL` (i.e.
-#'   `compute()` was run with `grp_vars` set on the source object).
-#'
-#' @returns A `gt_tbl` object.
+#' @describeIn as_gt Method for `mpr_gaze_cascade_fit` objects. Builds a `{gt}`
+#'   table of either bootstrapped gaze-cascade fit parameters
+#'   (`type = "estimates"`, the default, from `x$param_summary`) or
+#'   between-group parameter differences (`type = "differences"`, from
+#'   `x$diff_summary`). `"differences"` requires `x$diff_summary` to be
+#'   non-`NULL`, i.e. [compute.mpr_gaze_cascade()] was run with `grp_vars` set;
+#'   otherwise the method errors informatively. Tables are built fresh on every
+#'   call rather than stored on the object.
 #'
 #' @export
 as_gt.mpr_gaze_cascade_fit <- function(x, type = c("estimates", "differences"), ...) {
