@@ -9,17 +9,28 @@
 format.mpr_eyetracking <- function(x, ...) {
   c(
     "<mpr_eyetracking>",
-    sprintf("  subclass : %s", class(x)[1L]),
+    sprintf(
+      "  subclass : %s",
+      class(x)[1L]
+    ),
     sprintf(
       "  fixations: %d rows x %d cols",
-      nrow(x$fixations), ncol(x$fixations)
+      nrow(x$fixations),
+      ncol(x$fixations)
     ),
     sprintf(
       "  layout   : %d AOI(s) -- %s",
-      nrow(x$layout), paste(x$layout$aoi, collapse = ", ")
+      nrow(x$layout),
+      paste(x$layout$aoi, collapse = ", ")
     ),
-    sprintf("  width    : %s", .fmt_vec(x$layout$w, digits = 3L)),
-    sprintf("  height   : %s", .fmt_vec(x$layout$h, digits = 3L))
+    sprintf(
+      "  width    : %s",
+      .fmt_vec(x$layout$w, digits = 3L)
+    ),
+    sprintf(
+      "  height   : %s",
+      .fmt_vec(x$layout$h, digits = 3L)
+    )
   )
 }
 
@@ -42,7 +53,8 @@ print.mpr_eyetracking <- function(x, n = 6L, ...) {
   } else {
     cat(sprintf(
       "  Derivatives (%d rows total; showing first %d):\n",
-      nrow(x$derivatives), min(n, nrow(x$derivatives))
+      nrow(x$derivatives),
+      min(n, nrow(x$derivatives))
     ))
     print(utils::head(x$derivatives, n))
   }
