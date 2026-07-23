@@ -15,13 +15,14 @@ process(x, ...)
   type = c("measures", "cascade"),
   trial_vars = "trial_index",
   grp_vars = NULL,
-  stats = c("fixation_count", "dwell_time_total"),
   window = Inf,
+  chosen_aoi_col = NULL,
+  response_opts = NULL,
+  stats = c("fixation_count", "dwell_time_total"),
   query_aoi = NULL,
   reference_aois = NULL,
   n_bins = 100L,
   response_time_col = "response_time",
-  chosen_aoi_col = "chosen_aoi",
   ...
 )
 }
@@ -51,6 +52,32 @@ present in \code{x$fixations} and in \code{x$responses}.}
 present in \code{x$fixations} (and in \code{x$responses} when
 \code{type = "cascade"}), or \code{NULL} (default) for no extra grouping beyond
 the identifier column.}
+
+\item{window}{Numeric(1). When \code{type = "measures"}: upper bound on
+fixation end time (\code{etime}); fixations with \code{etime >= window} are
+excluded, and a \verb{_<window>} suffix is appended to statistic column
+names. \code{Inf} (default) keeps all fixations. When \code{type = "cascade"}:
+the span of the time window in \strong{seconds}, running from \code{-window} to
+\code{0} relative to the response. Must be finite and positive for cascade.
+If a value greater than 30 is supplied for \code{type = "cascade"},
+milliseconds are assumed and the value is automatically converted.}
+
+\item{chosen_aoi_col}{Character(1) or \code{NULL}. Name of the chosen-AOI column
+in \code{x$responses}. If non-\code{NULL} for \code{type = "measures"}, the AOI column in
+fixations is recoded from its raw coding to \code{"chosen"}/\code{"unchosen"} coding.
+Defaults to NULL for \code{type = "measures"} (i.e., raw AOI coding is used)
+and to \code{"chosen_aoi"} for \code{type = "cascade"}.}
+
+\item{response_opts}{Character vector of response options or \code{NULL}
+(default). Only used when \code{type = "measures"} and \code{chosen_aoi_col} is not
+\code{NULL}. Used to differentiate between AOIs that were presented as response
+options (e.g., reference images in a triplet task) and the rest (e.g., the
+query image in a triple task or a prompt in 2AFC). If provided, only AOIs
+with values from \code{response_opts} are re-coded, leaving the rest untouched.
+If \code{NULL}, all AOIs are recoded and all AOIs that were not chosen are
+collapsed form measures computation. It is thus recommended to specify
+\code{response_opts} explicitly everytime \code{chosen_aoi_col} is provided for the
+\verb{type = "measures} processing.}
 
 \item{stats}{Character vector of statistics to compute. Only used when
 \code{type = "measures"}. Defaults to \code{c("fixation_count", "dwell_time total")}.
@@ -109,15 +136,6 @@ was fixated last. Requires \code{reference_aois}.}
 fixation in the observation window.}
 }}
 
-\item{window}{Numeric(1). When \code{type = "measures"}: upper bound on
-fixation end time (\code{etime}); fixations with \code{etime >= window} are
-excluded, and a \verb{_<window>} suffix is appended to statistic column
-names. \code{Inf} (default) keeps all fixations. When \code{type = "cascade"}:
-the span of the time window in \strong{seconds}, running from \code{-window} to
-\code{0} relative to the response. Must be finite and positive for cascade.
-If a value greater than 30 is supplied for \code{type = "cascade"},
-milliseconds are assumed and the value is automatically converted.}
-
 \item{query_aoi}{Character(1). Label of the query AOI in
 \code{x$layout$aoi}. Required for all \verb{transitions_*} statistics when
 \code{type = "measures"}. Defaults to \code{NULL}.}
@@ -134,11 +152,6 @@ automatically from the unique non-\code{NA} values of \code{chosen_aoi_col} in
 \item{response_time_col}{Character(1). Name of the response time column
 in \code{x$responses}. Only used when \code{type = "cascade"}. Defaults to
 \code{"response_time"}.}
-
-\item{chosen_aoi_col}{Character(1). Name of the chosen-AOI column in
-\code{x$responses}, whose unique non-\code{NA} values define the reference AOIs
-for the cascade classification. Only used when \code{type = "cascade"}.
-Defaults to \code{"chosen_aoi"}.}
 }
 \value{
 The same object with \verb{$derivatives} populated as a \code{data.frame}.
@@ -157,5 +170,6 @@ to the class vector. Existing derivatives are silently overwritten.
 
 }}
 \seealso{
-\code{\link[=build_eyelink_eyetracking]{build_eyelink_eyetracking()}}, \code{\link[=plot.mpr_gaze_cascade]{plot.mpr_gaze_cascade()}}
+\code{\link[=build_eyelink_eyetracking]{build_eyelink_eyetracking()}}, \code{\link[=compute]{compute()}},
+\code{\link[=plot.mpr_gaze_cascade]{plot.mpr_gaze_cascade()}}, \code{\link[=plot.mpr_gaze_measures]{plot.mpr_gaze_measures()}}
 }

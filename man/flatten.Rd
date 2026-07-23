@@ -6,7 +6,7 @@
 \alias{flatten.default}
 \title{Pivot a dataset from long to wide format}
 \usage{
-\method{flatten}{mpr_gaze_measures}(x, chosen_aoi = FALSE, ...)
+\method{flatten}{mpr_gaze_measures}(x, ...)
 
 flatten(x, ...)
 
@@ -15,10 +15,6 @@ flatten(x, ...)
 \arguments{
 \item{x}{An object with a registered \code{compute} method (e.g.
 \code{mpr_gaze_measures}).}
-
-\item{chosen_aoi}{Logical(1). If \code{TRUE} and \code{x$derivatives} does not
-already have a \code{chosen_aoi} column, \code{\link[=annotate_chosen_aoi]{annotate_chosen_aoi()}} is called
-first so that \code{aoi_role}-derived columns are available after widening.}
 
 \item{...}{Additional arguments passed to methods.}
 }
@@ -37,5 +33,5 @@ wide format form.
 
 }}
 \seealso{
-\code{\link[=annotate_chosen_aoi]{annotate_chosen_aoi()}}, \code{\link[=lengthen]{lengthen()}}
+\code{\link[=lengthen]{lengthen()}}
 }

@@ -16,6 +16,15 @@
 #' @param stats Character vector of statistics to compute; validated against
 #'   `mathpsychr:::.valid_gaze_stats`.
 #' @param window Numeric. Upper bound on fixation `etime`; `Inf` keeps all.
+#' @param chosen_aoi_col Character(1). Chosen AOI column in `x$responses` or
+#'   `NULL`. If `NULL`, the original AOI coding is retained.  Otherwise, the AOI
+#'   column is recoded to include `"chosen"`/`"unchosen"` labels.
+#' @param response_opts Character vector of AOIs that count as candidate
+#'   responses, or `NULL` (default). When `NULL`, every AOI present in
+#'   `x$layout$aoi` is treated as a candidate. When supplied, must be a subset
+#'   of `x$dlayout$aoi`. AOIs inside `response_opts` are still coded
+#'   `"chosen"`/`"unchosen"`, while AOIs outside it (e.g. a query AOI in a
+#'   triplet task) are left as their original label.
 #' @param query_aoi Character(1). Label of the query AOI, or `NULL`. Required
 #'   only for `transitions_*` statistics.
 #' @param reference_aois Character(2) labels of the reference AOIs, or `NULL`.
@@ -34,6 +43,8 @@
     grp_vars,
     stats,
     window,
+    chosen_aoi_col,
+    response_opts,
     query_aoi,
     reference_aois
 ) {
@@ -107,6 +118,65 @@
     }
   }
 
+  # --- Validate response options for AOI recoding (optional) ------------------
+  if (!is.null(chosen_aoi_col)) {
+    if (is.null(x$responses)) {
+      cli::cli_abort(c(
+              "Cannot recover the chosen AOI.",
+        "x" = "`x$responses` is `NULL`.",
+        "i" = "Set {.arg chosen_aoi_col} to `NULL` or supply `x$response` containing {.arg chosen_aoi_col}."
+      ))
+    }
+    if (!chosen_aoi_col %in% names(x$responses)) {
+      cli::cli_abort(c(
+              "{.arg chosen_aoi_col} not found in `x$responses`.",
+        "x" = "Received {.val {chosen_aoi_col}}.",
+        "i" = "Available columns: {.val {names(x$responses)}}."
+      ))
+    }
+    if (!is.null(response_opts)) {
+      known_aoi <- unique(x$layout$aoi)
+      non_opts <- setdiff(response_opts, known_aoi)
+      if (length(non_opts) > 0L) {
+        cli::cli_abort(c(
+                "{.arg response_opts} must be a subset of AOIs present in the data (`x$layout`).",
+          "x" = "Unknown AOI{?s}: {.val {non_opts}}.",
+          "i" = "Available AOIs: {.val {known_aoi}}."
+        ))
+      }
+    } else {
+      if (!is.null(reference_aois)) {
+        response_opts <- reference_aois
+        cli::cli_warn(c(
+          "",
+          "x" = "both {.arg chosen_aoi_col} and {.arg reference_aois} were specified without providing {.arg response_opts}.",
+          "i" = "{.arg response_opts} set to {.arg reference_aois}: {.val {reference_aois}}"
+        ))
+      } else {
+        unchosen_val <- "unchosen"
+        cli::cli_warn(c(
+          "",
+          "!" = "{.arg chosen_aoi_col} provided without {.arg response_opts}.",
+          "i" = "All non-chosen AOIs will be collapsed into a single {.val {unchosen_val}} category.",
+          "i" = "This is usually not the intended behaviour, consider specifying {.arg response_opts} explictly."
+        ))
+      }
+    }
+    if (!is.null(reference_aois)) {
+      refs_not_opts <- setdiff(reference_aois, response_opts)
+      opts_not_refs <- setdiff(response_opts, reference_aois)
+      if (length(refs_not_opts) > 0L || length(opts_not_refs) > 0L) {
+        cli::cli_abort(c(
+                "If provided, {.arg reference_aois} must match {.arg response_opts}.",
+          "i" = "{.arg reference_aois}: {.val {reference_aois}}.",
+          "i" = "{.arg response_opts}: {.val {response_opts}}."
+        ))
+      } else {
+        reference_aois <- c("chosen", "unchosen")
+      }
+    }
+  }
+
   # --- Fill-in statistics -----------------------------------------------------
   if (length(stats) < 2L) {
     if (is.null(stats) || stats == "all") {
@@ -122,6 +192,7 @@
   # --- Grouping structure -----------------------------------------------------
   id_cols  <- x$id_cols
   grp_full <- unique(c(id_cols, trial_vars))
+  join_by  <- intersect(grp_full, names(x$responses))
 
   if (is.null(query_aoi)) {
     query_aoi <- NA_character_
@@ -129,8 +200,11 @@
   if (is.null(reference_aois)) {
     reference_aois <- c(NA_character_, NA_character_)
   }
+  if (!is.null(chosen_aoi_col)) {
+    resp <- dplyr::select(x$responses, tidyselect::all_of(c(join_by, chosen_aoi_col)))
+  }
 
-  # --- Annotate and trim ------------------------------------------------------
+  # --- Annotate, trim, and (optionally) add response --------------------------
   annotated <-
     x$fixations |>
     .annotate_fixations(x$layout) |>
@@ -142,6 +216,19 @@
       dplyr::across(tidyselect::all_of(grp_full)),
       .data$stime
     )
+
+  if (!is.null(chosen_aoi_col)) {
+    annotated <-
+      annotated |>
+      dplyr::left_join(
+        resp,
+        by = join_by,
+        relationship = "many-to-one"
+      ) |>
+      dplyr::mutate(
+        aoi = .annotate_chosen_aoi(aoi, .data[[chosen_aoi_col]], response_opts)
+      )
+  }
 
   # --- Revisit counts (per group x AOI) ---------------------------------------
   revisits <-

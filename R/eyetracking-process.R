@@ -25,6 +25,29 @@
 #'   present in `x$fixations` (and in `x$responses` when
 #'   `type = "cascade"`), or `NULL` (default) for no extra grouping beyond
 #'   the identifier column.
+#' @param window Numeric(1). When `type = "measures"`: upper bound on
+#'   fixation end time (`etime`); fixations with `etime >= window` are
+#'   excluded, and a `_<window>` suffix is appended to statistic column
+#'   names. `Inf` (default) keeps all fixations. When `type = "cascade"`:
+#'   the span of the time window in **seconds**, running from `-window` to
+#'   `0` relative to the response. Must be finite and positive for cascade.
+#'   If a value greater than 30 is supplied for `type = "cascade"`,
+#'   milliseconds are assumed and the value is automatically converted.
+#' @param chosen_aoi_col Character(1) or `NULL`. Name of the chosen-AOI column
+#'   in `x$responses`. If non-`NULL` for `type = "measures"`, the AOI column in
+#'   fixations is recoded from its raw coding to `"chosen"`/`"unchosen"` coding.
+#'   Defaults to NULL for `type = "measures"` (i.e., raw AOI coding is used)
+#'   and to `"chosen_aoi"` for `type = "cascade"`.
+#' @param response_opts Character vector of response options or `NULL`
+#'   (default). Only used when `type = "measures"` and `chosen_aoi_col` is not
+#'   `NULL`. Used to differentiate between AOIs that were presented as response
+#'   options (e.g., reference images in a triplet task) and the rest (e.g., the
+#'   query image in a triple task or a prompt in 2AFC). If provided, only AOIs
+#'   with values from `response_opts` are re-coded, leaving the rest untouched.
+#'   If `NULL`, all AOIs are recoded and all AOIs that were not chosen are
+#'   collapsed form measures computation. It is thus recommended to specify
+#'   `response_opts` explicitly everytime `chosen_aoi_col` is provided for the
+#'   `type = "measures` processing.
 #' @param stats Character vector of statistics to compute. Only used when
 #'   `type = "measures"`. Defaults to `c("fixation_count", "dwell_time total")`.
 #'   Valid values:
@@ -81,14 +104,6 @@
 #'     \item{`"watch_time"`}{Cumulative time until the end of the last
 #'       fixation in the observation window.}
 #'   }
-#' @param window Numeric(1). When `type = "measures"`: upper bound on
-#'   fixation end time (`etime`); fixations with `etime >= window` are
-#'   excluded, and a `_<window>` suffix is appended to statistic column
-#'   names. `Inf` (default) keeps all fixations. When `type = "cascade"`:
-#'   the span of the time window in **seconds**, running from `-window` to
-#'   `0` relative to the response. Must be finite and positive for cascade.
-#'   If a value greater than 30 is supplied for `type = "cascade"`,
-#'   milliseconds are assumed and the value is automatically converted.
 #' @param query_aoi Character(1). Label of the query AOI in
 #'   `x$layout$aoi`. Required for all `transitions_*` statistics when
 #'   `type = "measures"`. Defaults to `NULL`.
@@ -102,10 +117,6 @@
 #' @param response_time_col Character(1). Name of the response time column
 #'   in `x$responses`. Only used when `type = "cascade"`. Defaults to
 #'   `"response_time"`.
-#' @param chosen_aoi_col Character(1). Name of the chosen-AOI column in
-#'   `x$responses`, whose unique non-`NA` values define the reference AOIs
-#'   for the cascade classification. Only used when `type = "cascade"`.
-#'   Defaults to `"chosen_aoi"`.
 #' @param ... Currently unused.
 #'
 #' @returns The same object with `$derivatives` populated as a `data.frame`.
@@ -113,7 +124,8 @@
 #'   `"mpr_gaze_measures"` when `type = "measures"`, or
 #'   `"mpr_gaze_cascade"` when `type = "cascade"`.
 #'
-#' @seealso [build_eyelink_eyetracking()], [plot.mpr_gaze_cascade()]
+#' @seealso [build_eyelink_eyetracking()], [compute()],
+#'   [plot.mpr_gaze_cascade()], [plot.mpr_gaze_measures()]
 #'
 #' @export
 process <- function(x, ...) {
@@ -138,29 +150,33 @@ process.mpr_eyelink_eyetracking <- function(
     type = c("measures", "cascade"),
     trial_vars = "trial_index",
     grp_vars = NULL,
-    stats = c("fixation_count", "dwell_time_total"),
     window = Inf,
+    chosen_aoi_col = NULL,
+    response_opts = NULL,
+    stats = c("fixation_count", "dwell_time_total"),
     query_aoi = NULL,
     reference_aois = NULL,
     n_bins = 100L,
     response_time_col = "response_time",
-    chosen_aoi_col = "chosen_aoi",
     ...
 ) {
   type <- match.arg(type)
 
-  # --- Warn on type-irrelevant arguments supplied with non-default values -----
+  if (type == "cascade" && is.null(chosen_aoi_col)) {
+    chosen_aoi_col <- "chosen_aoi"
+  }
+
   if (type == "measures") {
     irrelevant <- c(
       if (!identical(n_bins, 100L)) "n_bins",
-      if (!identical(response_time_col, "response_time")) "response_time_col",
-      if (!identical(chosen_aoi_col, "chosen_aoi")) "chosen_aoi_col"
+      if (!identical(response_time_col, "response_time")) "response_time_col"
     )
   } else if (type == "cascade") {
     irrelevant <- c(
       if (!identical(stats, c("fixation_count", "dwell_time_total"))) "stats",
       if (!is.null(query_aoi)) "query_aoi",
-      if (!is.null(reference_aois)) "reference_aois"
+      if (!is.null(reference_aois)) "reference_aois",
+      if (!is.null(response_opts)) "response_opts"
     )
   }
   if (length(irrelevant) > 0L) {
@@ -169,18 +185,16 @@ process.mpr_eyelink_eyetracking <- function(
     ))
   }
 
-  # --- Dispatch to the appropriate worker -------------------------------------
   x$derivatives <- switch(
     type,
     measures = .process_gaze_measures(
-      x, trial_vars, grp_vars, stats, window, query_aoi, reference_aois
+      x, trial_vars, grp_vars, stats, window, chosen_aoi_col, response_opts, query_aoi, reference_aois
     ),
     cascade = .process_gaze_cascade(
       x, trial_vars, grp_vars, n_bins, window, response_time_col, chosen_aoi_col
     )
   )
 
-  # --- Prepend the result class -----------------------------------------------
   result_class <- switch(
     type,
     measures = "mpr_gaze_measures",

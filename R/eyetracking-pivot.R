@@ -121,21 +121,10 @@
 
 #' @describeIn flatten Method for `mpr_gaze_measures` objects.
 #'
-#' @param chosen_aoi Logical(1). If `TRUE` and `x$derivatives` does not
-#'   already have a `chosen_aoi` column, [annotate_chosen_aoi()] is called
-#'   first so that `aoi_role`-derived columns are available after widening.
-#' @param ... Further arguments passed to [annotate_chosen_aoi()] when
-#'   `chosen_aoi = TRUE`.
-#'
-#' @seealso [annotate_chosen_aoi()], [lengthen()]
+#' @seealso [lengthen()]
 #'
 #' @export
-flatten.mpr_gaze_measures <- function(
-    x, chosen_aoi = FALSE, ...
-) {
-  if (isTRUE(chosen_aoi) && !"chosen_aoi" %in% names(x$derivatives)) {
-    x <- annotate_chosen_aoi(x, ...)
-  }
+flatten.mpr_gaze_measures <- function(x, ...) {
   x$derivatives <- .flatten_gaze_measures(x$derivatives)
   x
 }
