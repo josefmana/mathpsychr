@@ -517,22 +517,24 @@ eyelink_data$fixations$dur <- eyelink_data$fixations$dur / 1000
 Computing the measures uses the same `process()` function as the gaze cascade, only with `type = "measures"`:
 
 ```{r measures-processing, cache=TRUE}
-em_data_raw <- process(
+em_data <- process(
   eyelink_data,
-  type = "measures",                  # CHANGE: "measures" instead of "cascade"
+  type = "measures",                   # CHANGE: "measures" instead of "cascade"
   trial_vars = c("block", "trial"),
-  grp_vars = "difficulty_bin",        # measures are computed per trial; `grp_vars` tags along for later
-  stats = NULL,                       # NULL or "all" computes every available measure
-  window = Inf,                       # Inf computes measures across the full trial
-  query_aoi = "query",                # query and reference AOIs are required for the
-  reference_aois = c("left", "right") # triplet-task specific statistics
+  grp_vars = "difficulty_bin",         # measures are computed per trial; `grp_vars` tags along for later
+  stats = NULL,                        # NULL or "all" computes every available measure
+  window = Inf,                        # Inf computes measures across the full trial
+  query_aoi = "query",                 # query and reference AOIs are required for the
+  reference_aois = c("left", "right"), # triplet-task specific statistics
+  chosen_aoi_col = "chosen_aoi",       # signals the function to re-code AOIs from "left"/"right" to "chosen"/"unchosen"
+  response_opts = NULL                 # in triplet task, `reference_aois` suffice (see warning printed below)
 )
 ```
 
 The printed object looks structurally similar `mpr_gaze_cascade`, differing mainly in what `$derivatives` holds:
 
 ```{r measures-data}
-em_data_raw
+em_data
 ```
 
 Two subtler differences are worth noting:
@@ -541,22 +543,9 @@ Two subtler differences are worth noting:
 * Instead of `window` and `n_bins`, this object stores `trial_vars` (both store `id_cols` and, when present, `grp_vars`), which downstream computations use to identify rows:
 
 ```{r measures-attributes}
-attr(em_data_raw$derivatives, "id_cols")
-attr(em_data_raw$derivatives, "grp_vars")
-attr(em_data_raw$derivatives, "trial_vars")
-```
-
-Note also that currently, `aoi` is coded as `"left"`, `"right"` or `"query"`. Since left–right placement of the reference images was counterbalanced, that coding is not very useful. `annotate_chosen_aoi()` re-codes it into `"chosen"`/`"unchosen"` whenever the object carries response data:
-
-```{r measures-annotate-chosen}
-em_data <- annotate_chosen_aoi(
-  em_data_raw,
-  chosen_aoi_col = "chosen_aoi",
-  response_opts = c("left", "right"), # any `aoi` not listed here keeps its original label
-  rewrite = TRUE                      # FALSE (default) adds new columns instead of overwriting
-)
-
-em_data
+attr(em_data$derivatives, "id_cols")
+attr(em_data$derivatives, "grp_vars")
+attr(em_data$derivatives, "trial_vars")
 ```
 
 ## Statistical comparisons
@@ -578,7 +567,7 @@ em_comparisons <- compute(
   stats = NULL,
   alpha = 0.05,
   p_adjust_method = "bonferroni",
-  correlate = FALSE # can enablee inspection of (optionally per-group) measure correlations
+  correlate = FALSE # if `TRUE` enables inspection of (optionally per-group) measure correlations
 )
 ```
 
@@ -744,7 +733,7 @@ That is the intended use. Everything here is a **low-dimensional summary** desig
 
 ## Where next
 
-* **Fit diagnostics and bootstrap sampling issues**: the convergence failures, BCa fallbacks, and R~2~ anomalies flagged throughout, in a dedicated vignette (*TBA*).
+* **Fit diagnostics and bootstrap sampling issues**: the convergence failures, BCa fallbacks, and R^2^ anomalies flagged throughout, in a dedicated vignette (*TBA*).
 * **`plot.mpr_gaze_cascade_fit(type = "diagnostic")`**: the diagnostic plots deferred here.
 * **Measure correlations**: via `compute(..., correlate = TRUE)`; with 49 highly related measures, that structure is worth a section of its own.
 * **Trial-level prediction**: the measures in `em_data` are trial-level and ready to serve as predictors of choice or response time, which is where the modelling proper begins.
