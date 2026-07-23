@@ -236,7 +236,7 @@
   df <- .gt_measures_subset(df, scope, stats)
   if (nrow(df) == 0L) {
     cli::cli_abort(c(
-      "No descriptive statistics for scope = {.val {scope}}.",
+            "No descriptive statistics for scope = {.val {scope}}.",
       "i" = "Available measures: {.val {x$stats}}."
     ))
   }
@@ -347,7 +347,7 @@
     p = "p",
     `p<.05` = "sig.",
     ges = "\u03b7\u00b2 (gen.)",
-    pes = "\u03b7\u00b2 (partial)"
+    pes = "\u03b7\u00b2 (part.)"
   )
   present_labels <- known_labels[intersect(names(known_labels), names(df))]
 
@@ -421,9 +421,17 @@
     ))
   }
 
+  dynamic_col <- if (scope %in% .aoi_like_scopes && length(x$grp_vars) >= 1L) {
+    "aoi_lvl"
+  } else if (scope == "stimulus" && length(x$grp_vars) >= 2L) {
+    x$grp_vars[[2L]]
+  } else {
+    NULL
+  }
+
   .gt_measures_pairwise_one(
     df,
-    x$grp_vars,
+    dynamic_col,
     x$alpha,
     x$p_adjust_method,
     .gt_measures_scope_label(scope)
@@ -444,8 +452,8 @@
 ) {
   ci_label <- paste0(scales::percent(1 - alpha, accuracy = 1), " CI")
 
-  dynamic_col <- intersect(names(data), grp_vars)
-  dynamic_col <- if (length(dynamic_col) > 0L) dynamic_col[[1L]] else NULL
+  dynamic_candidates <- intersect(grp_vars, names(data))
+  dynamic_col <- Find(function(col) any(!is.na(data[[col]])), dynamic_candidates)
 
   has_ci   <- all(c("conf.low", "conf.high") %in% names(data))
   has_d_ci <- all(c("cohens_d_conf_low", "cohens_d_conf_high") %in% names(data))

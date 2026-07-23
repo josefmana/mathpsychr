@@ -7,6 +7,12 @@
   anova_mixed         = "Mixed ANOVA (one factor within, one between)"
 )
 
+# Scopes analysed in the same, AOI-like way
+# Used also within `R/eyetracking-methods-measures.R`
+.aoi_like_scopes <- c(
+  "aoi",
+  "categorical"
+)
 
 #' Resolve AOI-specific statistic columns present in `derivatives`
 #'
@@ -151,7 +157,6 @@
 #'
 #' @param derivatives `mpr_gaze_measures` object `$derivatives`.
 #' @param id_cols Character. Identifier column(s).
-#' @param trial_vars Character. Trial-identifying column(s).
 #' @param aoi_stat_cols,stimulus_stat_cols Named character vectors from
 #'   [.resolve_measure_stat_cols()] (names = base stat, values = actual
 #'   column name), split by scope.
@@ -164,7 +169,7 @@
 #'
 #' @noRd
 .average_measures_participant <- function(
-    derivatives, id_cols, trial_vars, aoi_stat_cols, stimulus_stat_cols, stratify_vars
+    derivatives, id_cols, aoi_stat_cols, stimulus_stat_cols, stratify_vars
 ) {
   aoi_avg <- if (length(aoi_stat_cols) == 0L) {
     NULL
@@ -194,10 +199,10 @@
     grp_stim <- unique(c(id_cols, stratify_vars))
     derivatives |>
       dplyr::rename(!!!stimulus_stat_cols) |>
-      dplyr::select(tidyselect::all_of(c(id_cols, trial_vars, stratify_vars, names(stimulus_stat_cols)))) |>
+      dplyr::select(tidyselect::all_of(c(id_cols, stratify_vars, names(stimulus_stat_cols)))) |>
       dplyr::distinct() |>
       tidyr::pivot_longer(
-        !tidyselect::all_of(unique(c(id_cols, trial_vars, stratify_vars))),
+        !tidyselect::all_of(unique(c(id_cols, stratify_vars))),
         names_to = "measure",
         values_to = "value"
       ) |>
@@ -332,14 +337,15 @@
     dplyr::group_by(dplyr::across(tidyselect::all_of(c(grp, "measure")))) |>
     dplyr::mutate(n_total = sum(.data$n)) |>
     dplyr::ungroup() |>
-    dplyr::transmute(
+    dplyr::mutate(
       dplyr::across(tidyselect::all_of(grp)),
       measure = .data$measure,
       aoi = .data$category,
       avg_value = .data$proportion,
       std = NA_real_,
       n = .data$n_total,
-      scope = "categorical"
+      scope = "categorical",
+      .keep = "none"
     )
 }
 
@@ -458,7 +464,10 @@
     return(NULL)
   }
 
-  nesting  <- rlang::set_names(vapply(factors, \(f) .detect_nesting(d, f), character(1L)), factors)
+  nesting  <- rlang::set_names(
+    vapply(factors, \(f) .detect_nesting(d, f), character(1L)),
+    factors
+  )
   within_factors  <- factors[nesting == "within"]
   between_factors <- factors[nesting == "between"]
 
@@ -491,39 +500,59 @@
 
   # ---- One factor: one-way ANOVA ---------------------------------------------
   if (length(factors) == 1L) {
-    f <- factors[[1]]
+    f <- factors[[1L]]
     is_within <- f %in% within_factors
     form <- stats::as.formula(paste("avg_value ~", f))
 
     test <- if (is_within) {
       d |>
-        rstatix::anova_test(dv = .data$avg_value, wid = .data$.id, within = f) |>
+        rstatix::anova_test(
+          dv = "avg_value",
+          wid = ".id",
+          within = f,
+          effect.size = "pes"
+        ) |>
         rstatix::get_anova_table()
     } else {
       d |>
-        rstatix::anova_test(dv = .data$avg_value, wid = .data$.id, between = f) |>
+        rstatix::anova_test(
+          dv = "avg_value",
+          wid = ".id",
+          between = f,
+          effect.size = "pes"
+        ) |>
         rstatix::get_anova_table()
     }
 
-    pairwise <-
-      d |>
-      rstatix::pairwise_t_test(form, paired = is_within, detailed = TRUE, p.adjust.method = p_adjust_method)
+    pairwise <- rstatix::pairwise_t_test(
+      d,
+      form,
+      paired = is_within,
+      detailed = TRUE,
+      p.adjust.method = p_adjust_method
+    )
 
     effect <-
       d |>
-      rstatix::cohens_d(form, paired = is_within, ci = TRUE, conf.level = 1 - alpha) |>
-      dplyr::mutate(
-        cohens_d           = .data$effsize,
-        cohens_d_magnitude = .data$magnitude,
-        cohens_d_conf_low  = .data$conf.low,
-        cohens_d_conf_high = .data$conf.high,
-        .keep = "none"
+      rstatix::cohens_d(
+        form,
+        paired = is_within,
+        ci = TRUE,
+        conf.level = 1 - alpha
+      ) |>
+      dplyr::select(
+        "group1",
+        "group2",
+        cohens_d           = "effsize",
+        cohens_d_magnitude = "magnitude",
+        cohens_d_conf_low  = "conf.low",
+        cohens_d_conf_high = "conf.high"
       )
 
     return(list(
       test_type = "anova",
       test = test,
-      pairwise = dplyr::bind_cols(pairwise, effect),
+      pairwise = dplyr::left_join(pairwise, effect, by = c("group1", "group2")),
       nesting = nesting
     ))
   }
@@ -535,10 +564,11 @@
   test <-
     d |>
     rstatix::anova_test(
-      dv = .data$avg_value,
-      wid = .data$.id,
+      dv = "avg_value",
+      wid = ".id",
       within = if (length(within_factors) > 0L) within_factors else NULL,
-      between = if (length(between_factors) > 0L) between_factors else NULL
+      between = if (length(between_factors) > 0L) between_factors else NULL,
+      effect.size = "pes"
     ) |>
     rstatix::get_anova_table()
 
@@ -552,9 +582,9 @@
 
   pairwise <-
     d |>
-    dplyr::group_by(dplyr::across(tidyselect::all_of(f2))) |>
+    dplyr::group_by(dplyr::across(tidyselect::all_of(f1))) |>
     rstatix::pairwise_t_test(
-      stats::as.formula(paste("avg_value ~", f1)),
+      stats::as.formula(paste("avg_value ~", f2)),
       paired = f1 %in% within_factors,
       detailed = TRUE,
       p.adjust.method = p_adjust_method
@@ -563,25 +593,34 @@
 
   effect <-
     d |>
-    dplyr::group_by(dplyr::across(tidyselect::all_of(f2))) |>
+    dplyr::group_by(dplyr::across(tidyselect::all_of(f1))) |>
     rstatix::cohens_d(
-      stats::as.formula(paste("avg_value ~", f1)),
+      stats::as.formula(paste("avg_value ~", f2)),
       paired = f1 %in% within_factors,
       ci = TRUE,
       conf.level = 1 - alpha
     ) |>
     dplyr::ungroup() |>
-    dplyr::mutate(
-      cohens_d           = .data$effsize,
-      cohens_d_magnitude = .data$magnitude,
-      cohens_d_conf_low  = .data$conf.low,
-      cohens_d_conf_high = .data$conf.high,
-      .keep = "none"
+    dplyr::select(
+      tidyselect::all_of(c(f1, "group1", "group2")),
+      cohens_d           = "effsize",
+      cohens_d_magnitude = "magnitude",
+      cohens_d_conf_low  = "conf.low",
+      cohens_d_conf_high = "conf.high"
     )
 
-  pairwise <- dplyr::bind_cols(pairwise, effect)
+  pairwise <- dplyr::left_join(
+    pairwise,
+    effect,
+    by = c(f1, "group1", "group2")
+  )
 
-  list(test_type = test_type, test = test, pairwise = pairwise, nesting = nesting)
+  list(
+    test_type = test_type,
+    test = test,
+    pairwise = pairwise,
+    nesting = nesting
+  )
 }
 
 
@@ -610,7 +649,9 @@
   } else {
     aoi_grp <- .select_grp_vars(stratify_vars, 1L)
     aoi_data |>
-      dplyr::group_by(dplyr::across(tidyselect::all_of(c("measure", "scope", "aoi", aoi_grp)))) |>
+      dplyr::group_by(
+        dplyr::across(tidyselect::all_of(c("measure", "scope", "aoi", aoi_grp)))
+      ) |>
       dplyr::summarise(
         level_mean = mean(.data$avg_value, na.rm = TRUE),
         level_sd = stats::sd(.data$avg_value, na.rm = TRUE),
@@ -625,7 +666,9 @@
   } else {
     stim_grp <- .select_grp_vars(stratify_vars, 2L)
     stim_data |>
-      dplyr::group_by(dplyr::across(tidyselect::all_of(c("measure", stim_grp)))) |>
+      dplyr::group_by(
+        dplyr::across(tidyselect::all_of(c("measure", stim_grp)))
+      ) |>
       dplyr::summarise(
         level_mean = mean(.data$avg_value, na.rm = TRUE),
         level_sd = stats::sd(.data$avg_value, na.rm = TRUE),
@@ -718,8 +761,19 @@
     for (i in cli::cli_progress_along(seq_len(nrow(keys_df)), "Testing AOI-scope/categorical measures")) {
       chunk <- chunks[[i]]
       chunk$aoi_lvl <- chunk$aoi
-      result <- .test_one_group_comparison(chunk, keys_df$measure[i], id_cols, c("aoi_lvl", aoi_grp), alpha, p_adjust_method)
-      .add_result(result, keys_df[i, "measure", drop = FALSE], keys_df$scope[i])
+      result <- .test_one_group_comparison(
+        chunk,
+        keys_df$measure[i],
+        id_cols,
+        c("aoi_lvl", aoi_grp),
+        alpha,
+        p_adjust_method
+      )
+      .add_result(
+        result,
+        keys_df[i, "measure", drop = FALSE],
+        keys_df$scope[i]
+      )
     }
   }
 
@@ -767,8 +821,6 @@
 #'
 #' @noRd
 .join_measure_pair <- function(avg_data, id_cols, grp_vars, stat_x, stat_y) {
-  aoi_like <- c("aoi", "categorical")
-
   d1 <- avg_data |>
     dplyr::filter(.data$measure == stat_x) |>
     dplyr::select(
@@ -792,8 +844,8 @@
   scope_x <- unique(dplyr::filter(avg_data, .data$measure == stat_x)$scope)[[1L]]
   scope_y <- unique(dplyr::filter(avg_data, .data$measure == stat_y)$scope)[[1L]]
 
-  both_aoi_like  <- scope_x %in% aoi_like && scope_y %in% aoi_like
-  aoi_applicable <- scope_x %in% aoi_like || scope_y %in% aoi_like
+  both_aoi_like  <- scope_x %in% .aoi_like_scopes && scope_y %in% .aoi_like_scopes
+  aoi_applicable <- scope_x %in% .aoi_like_scopes || scope_y %in% .aoi_like_scopes
 
   join_cols <- c(id_cols, grp_vars)
   if (both_aoi_like) {
@@ -805,7 +857,7 @@
   joined <- dplyr::inner_join(d1, d2, by = join_cols)
 
   if (!both_aoi_like && aoi_applicable) {
-    joined$aoi <- if (scope_x %in% aoi_like) joined$x_aoi else joined$y_aoi
+    joined$aoi <- if (scope_x %in% .aoi_like_scopes) joined$x_aoi else joined$y_aoi
   }
 
   candidates <- character(0)
@@ -894,7 +946,13 @@
   pairs <- utils::combn(stats, 2L, simplify = FALSE)
   dplyr::bind_rows(lapply(cli::cli_progress_along(pairs, "Computing pairwise measure correlations"), function(i) {
     pair <- pairs[[i]]
-    .compute_measure_correlation(avg_data, id_cols, grp_vars, pair[[1L]], pair[[2L]])
+    .compute_measure_correlation(
+      avg_data,
+      id_cols,
+      grp_vars,
+      pair[[1L]],
+      pair[[2L]]
+    )
   }))
 }
 
@@ -1008,29 +1066,67 @@ compute.mpr_gaze_measures <- function(
     ))
   }
 
-  id_cols <- attr(derivatives, "id_cols")
-  trial_vars <- attr(derivatives, "trial_vars")
-  grp_vars <- attr(derivatives, "grp_vars")
+  id_cols       <- attr(derivatives, "id_cols")
+  trial_vars    <- attr(derivatives, "trial_vars")
+  grp_vars      <- attr(derivatives, "grp_vars")
   stratify_vars <- if (isTRUE(by_group)) grp_vars else NULL
 
-  stat_map <- .resolve_measure_stat_cols(derivatives, stats)
-  aoi_cols <- rlang::set_names(stat_map$col[stat_map$scope == "aoi"], stat_map$stat[stat_map$scope == "aoi"])
-  stimulus_cols <- rlang::set_names(stat_map$col[stat_map$scope == "stimulus"], stat_map$stat[stat_map$scope == "stimulus"])
-  categorical_cols <- rlang::set_names(stat_map$col[stat_map$scope == "categorical"], stat_map$stat[stat_map$scope == "categorical"])
+  stat_map <- .resolve_measure_stat_cols(
+    derivatives,
+    stats
+  )
 
-  cat_counts <- .count_measures_participant(derivatives, id_cols, trial_vars, categorical_cols, stratify_vars)
-  cont_data <- .average_measures_participant(derivatives, id_cols, trial_vars, aoi_cols, stimulus_cols, stratify_vars)
+  aoi_stat_cols <- rlang::set_names(
+    stat_map$col[stat_map$scope == "aoi"],
+    stat_map$stat[stat_map$scope == "aoi"]
+  )
+  stimulus_stat_cols <- rlang::set_names(
+    stat_map$col[stat_map$scope == "stimulus"],
+    stat_map$stat[stat_map$scope == "stimulus"]
+  )
+  categorical_cols <- rlang::set_names(
+    stat_map$col[stat_map$scope == "categorical"],
+    stat_map$stat[stat_map$scope == "categorical"]
+  )
 
+  cat_counts <- .count_measures_participant(
+    derivatives,
+    id_cols,
+    trial_vars,
+    categorical_cols,
+    stratify_vars
+  )
+  cont_data <- .average_measures_participant(
+    derivatives,
+    id_cols,
+    aoi_stat_cols,
+    stimulus_stat_cols,
+    stratify_vars
+  )
   avg_data <- dplyr::bind_rows(
     cont_data,
     .categorical_avg_from_counts(cat_counts, id_cols, stratify_vars)
   )
 
-  results <- .run_measure_tests(avg_data, id_cols, stratify_vars, alpha, p_adjust_method)
-  descriptive_summary <- .describe_measure_levels(avg_data, stratify_vars)
+  descriptive_summary <- .describe_measure_levels(
+    avg_data,
+    stratify_vars
+  )
+  results <- .run_measure_tests(
+    avg_data,
+    id_cols,
+    stratify_vars,
+    alpha,
+    p_adjust_method
+  )
 
   correlation_summary <- if (isTRUE(correlate)) {
-    .compute_measure_correlations(avg_data, id_cols, stratify_vars, unique(stat_map$stat))
+    .compute_measure_correlations(
+      avg_data,
+      id_cols,
+      stratify_vars,
+      unique(stat_map$stat)
+    )
   } else {
     NULL
   }
@@ -1049,8 +1145,12 @@ compute.mpr_gaze_measures <- function(
 
   if (!quiet) {
     .report_measures_caveats(
-      test_summary, results$pairwise_summary, stat_map,
-      grp_vars, stratify_vars, p_adjust_method,
+      test_summary,
+      results$pairwise_summary,
+      stat_map,
+      grp_vars,
+      stratify_vars,
+      p_adjust_method,
       nesting = results$nesting_summary
     )
   }
