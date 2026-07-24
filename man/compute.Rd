@@ -11,7 +11,7 @@
 \usage{
 \method{compute}{mpr_gaze_cascade}(
   x,
-  fit_type = c("sigmoid", "piecewise", "both"),
+  fit_type = c("sigmoid", "piecewise"),
   n_boot = 2000L,
   alpha = 0.05,
   ci_type = c("bca", "perc", "basic", "norm"),
@@ -44,7 +44,9 @@ compute(x, ...)
 \item{x}{An object with a registered \code{compute} method (e.g. \code{mpr_power}
 or \code{mpr_gaze_cascade}).}
 
-\item{fit_type}{One of \code{"sigmoid"}, \code{"piecewise"}, or \code{"both"}.}
+\item{fit_type}{Character. Which curve(s) to fit: \code{"sigmoid"}, \code{"piecewise"},
+or both at once via \code{c("sigmoid", "piecewise")}. The two are fit and
+summarised independently. Defaults to \code{"sigmoid"}.}
 
 \item{n_boot}{Integer(1). Number of bootstrap resamples. Defaults to \code{2000}.}
 
@@ -102,10 +104,14 @@ parameter per fit type, plus per-group rows if \code{grp_vars} was set.
 \code{estimate} is the fit to the observed, un-resampled grand average}
 \item{diff_summary}{Between-group parameter differences, or \code{NULL} if
 ungrouped. \code{estimate} is the difference of the two observed estimates}
-\item{fits}{Per-fit-type list of observed fits, raw bootstrap draws
-(including \code{r2}), and a fit-health report}
-\item{boot}{The underlying \code{boot} object, filtered to usable resamples}
-\item{spec}{Layout mapping \code{boot$t} columns to fit type, group, parameter}
+\item{fits}{Per-fit-type list of observed fits, retained bootstrap draws
+(including \code{r2}), the count and indices of resamples that fitter dropped
+(\code{n_failed}, \code{failed}), and a fit-health report}
+\item{boot}{The underlying \code{boot} object, unfiltered: all \code{n_boot}
+resamples, with \code{NA} in a fitter's columns on resamples it failed to
+converge on. Per-fitter dropped indices are on \code{fits[[type]]$failed}}
+\item{spec}{Layout mapping \code{boot$t} columns to fit type, group,
+parameter}
 \item{fit_type, grp_vars, alpha, ci_type}{Call metadata}
 }.
 Call \code{\link[=as_gt]{as_gt()}} or \code{\link[=print]{print()}} to render \code{{gt}} tables, \code{\link[=plot]{plot()}} for
@@ -175,13 +181,18 @@ land anywhere, even at implausible values (e.g., an upper asymptote below
 the lower one, a breakpoint outside the observed window).
 \code{x$fits[[type]]$health} reports how often that happened across resamples.
 
-Resampling and interval construction are delegated to \code{{boot}}. The
-underlying object is returned on \code{x$boot}, and \code{x$spec} maps its columns to
-fit type, group and parameter, so any other interval type is directly
-available:
+Resampling is delegated to \code{{boot}}. The underlying object is returned
+unfiltered on \code{x$boot} (all \code{n_boot} resamples; a fitter's columns are \code{NA}
+on resamples it failed to converge on), and \code{x$spec} maps its columns to fit
+type, group and parameter. Because the fitters are retained independently,
+the resamples dropped from each are recorded separately on
+\code{x$fits[[type]]$failed}, indexing the rows of \code{x$boot}. To inspect a resample
+a fitter failed on, pull its recordings back out of the \code{{boot}} object with
+\code{\link[boot:boot.array]{boot::boot.array()}}:
 
-\if{html}{\out{<div class="sourceCode">}}\preformatted{i <- which(x$spec$kind == "param" & x$spec$parameter == "k")[1]
-boot::boot.ci(x$boot, index = i, type = "stud")
+\if{html}{\out{<div class="sourceCode">}}\preformatted{arr <- boot::boot.array(x$boot, indices = TRUE)  # n_boot x n_recordings
+failed <- x$fits$sigmoid$failed                     # resamples sigmoid dropped
+x$boot$data[arr[failed[1], ], , drop = FALSE]       # recordings in the first
 }\if{html}{\out{</div>}}
 
 Each measure is routed by its AOI/Stimulus scope (see

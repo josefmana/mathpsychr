@@ -125,7 +125,7 @@
 #'   `"mpr_gaze_cascade"` when `type = "cascade"`.
 #'
 #' @seealso [build_eyelink_eyetracking()], [compute()],
-#'   [plot.mpr_gaze_cascade()], [plot.mpr_gaze_measures()]
+#'   [plot.mpr_gaze_cascade()]
 #'
 #' @export
 process <- function(x, ...) {

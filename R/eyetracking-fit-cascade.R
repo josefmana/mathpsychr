@@ -85,10 +85,10 @@
   fit <- tryCatch(
     stats::nls(
       model_formula,
-      data      = d,
-      start     = as.list(start),
+      data = d,
+      start = as.list(start),
       algorithm = "port",
-      control   = stats::nls.control(maxiter = 500L)
+      control = stats::nls.control(maxiter = 500L)
     ),
     error = \(e) {
       cli::cli_warn("{model_label} fit{label_str} failed: {conditionMessage(e)}")
@@ -199,7 +199,8 @@
   t_rng <- range(time, na.rm = TRUE)
 
   .fit_cascade_ss(
-    time, y,
+    time,
+    y,
     model_formula = y ~ .piecewise_linear(time, L, t0, slope),
     ss_formula = NULL,
     remap = \(cf) c(
@@ -335,4 +336,59 @@
       )
     }) |>
     dplyr::ungroup()
+}
+
+
+#' Fit every requested curve type to one (possibly resampled) data set
+#'
+#' The single place a curve is fit during bootstrapping. Returns a flat numeric
+#' vector laid out exactly as `spec`, with `NA` wherever a fit failed, a group
+#' was absent from the resample, or a parameter came back non-finite. Contrast
+#' entries are differenced from the marginal entries, so they inherit `NA`
+#' automatically.
+#'
+#' @param data Cluster-level cascade data (resampled or not).
+#' @param grp_vars Character or `NULL`.
+#' @param fitters Named list of fitter functions.
+#' @param n_bins,window Passed to [.summarise_cascade()].
+#' @param spec Output of [.cascade_stat_spec()].
+#'
+#' @returns Numeric vector, `nrow(spec)` long.
+#'
+#' @noRd
+.fit_cascade_once <- function(data, grp_vars, fitters, n_bins, window, spec) {
+  df_grand <- .summarise_cascade(data, n_bins, window, by = grp_vars)
+  out <- rep(NA_real_, nrow(spec))
+
+  for (ft in names(fitters)) {
+    fitter <- fitters[[ft]]
+
+    fit <- suppressWarnings(
+      if (is.null(grp_vars)) {
+        fitter(df_grand$time, df_grand$mean_prop)
+      } else {
+        .fit_cascade_by_group(df_grand, grp_vars, fitter)
+      }
+    )
+
+    if (is.null(fit) || (is.data.frame(fit) && nrow(fit) == 0L)) next
+
+    tidy <- .tidy_boot_fit(fit, grp_vars)
+    if (is.null(tidy)) next
+
+    for (i in which(spec$kind %in% c("param", "r2") & spec$fit_type == ft)) {
+      row <- tidy[tidy$group_name == spec$group_name[[i]], , drop = FALSE]
+      if (nrow(row) != 1L) next
+      col <- if (spec$kind[[i]] == "r2") "r2" else paste0("param_", spec$parameter[[i]])
+      v <- row[[col]]
+      if (length(v) == 1L && is.finite(v)) out[[i]] <- v
+    }
+  }
+
+  diff_rows <- which(spec$kind == "diff")
+  if (length(diff_rows) > 0L) {
+    out[diff_rows] <- out[spec$idx_a[diff_rows]] - out[spec$idx_b[diff_rows]]
+  }
+
+  out
 }

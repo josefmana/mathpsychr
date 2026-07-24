@@ -6,7 +6,7 @@
 \alias{as_gt.mpr_gaze_measures_comparison}
 \alias{as_gt}
 \alias{as_gt.default}
-\title{Coerce an {mathpsychr} object to a \code{{gt}} table}
+\title{Coerce an \{mathpsychr\} object to a \code{{gt}} table}
 \usage{
 \method{as_gt}{mpr_gaze_cascade_fit}(x, type = c("estimates", "differences"), ...)
 
@@ -49,7 +49,7 @@ statistic in the selected \code{scope}.}
 A \code{gt_tbl} object.
 }
 \description{
-Coerce an {mathpsychr} object to a \code{{gt}} table
+Coerce an \{mathpsychr\} object to a \code{{gt}} table
 }
 \details{
 AOI-scope, categorical, and stimulus-scope measures each get their own

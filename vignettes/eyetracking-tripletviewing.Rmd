@@ -427,7 +427,7 @@ Visually, the curves look similar across difficulty bins, with the inflection po
 ```{r cascade-bootstrap, cache=TRUE}
 gc_bootstrap <- compute(
   gc_grouped_data,
-  fit_type = "both",
+  fit_type = c("sigmoid", "piecewise"),
   n_boot = 2000L,
   alpha = 0.05,
   ci_type = "bca",

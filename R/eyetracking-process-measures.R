@@ -163,9 +163,7 @@
       }
     }
     if (!is.null(reference_aois)) {
-      refs_not_opts <- setdiff(reference_aois, response_opts)
-      opts_not_refs <- setdiff(response_opts, reference_aois)
-      if (length(refs_not_opts) > 0L || length(opts_not_refs) > 0L) {
+      if (!identical(sort(reference_aois), sort(response_opts))) {
         cli::cli_abort(c(
                 "If provided, {.arg reference_aois} must match {.arg response_opts}.",
           "i" = "{.arg reference_aois}: {.val {reference_aois}}.",
@@ -226,7 +224,7 @@
         relationship = "many-to-one"
       ) |>
       dplyr::mutate(
-        aoi = .annotate_chosen_aoi(aoi, .data[[chosen_aoi_col]], response_opts)
+        aoi = .annotate_chosen_aoi(.data$aoi, .data[[chosen_aoi_col]], response_opts)
       )
   }
 

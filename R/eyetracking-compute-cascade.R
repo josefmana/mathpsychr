@@ -127,7 +127,8 @@
 #' group, with `param_*` columns, `r2`, and a `group_name` column
 #'
 #' Ungrouped fits get a synthetic `group_name` of `"Overall"` so that
-#' [.cascade_fit_once()] has a single shape to index.
+#' [.fit_cascade_once()] (`R/eyetracking-fit-cascade.R`) has a single shape to
+#' index.
 #'
 #' @param fit Bootstrapping fit results.
 #' @param grp_vars Character or `NULL`. Grouping variable(s).
@@ -151,60 +152,6 @@
 }
 
 
-#' Fit every requested curve type to one (possibly resampled) data set
-#'
-#' The single place a curve is fit during bootstrapping. Returns a flat numeric
-#' vector laid out exactly as `spec`, with `NA` wherever a fit failed, a group
-#' was absent from the resample, or a parameter came back non-finite. Contrast
-#' entries are differenced from the marginal entries, so they inherit `NA`
-#' automatically.
-#'
-#' @param data Cluster-level cascade data (resampled or not).
-#' @param grp_vars Character or `NULL`.
-#' @param fitters Named list of fitter functions.
-#' @param n_bins,window Passed to [.summarise_cascade()].
-#' @param spec Output of [.cascade_stat_spec()].
-#'
-#' @returns Numeric vector, `nrow(spec)` long.
-#'
-#' @noRd
-.cascade_fit_once <- function(data, grp_vars, fitters, n_bins, window, spec) {
-  df_grand <- .summarise_cascade(data, n_bins, window, by = grp_vars)
-  out <- rep(NA_real_, nrow(spec))
-
-  for (ft in names(fitters)) {
-    fitter <- fitters[[ft]]
-
-    fit <- suppressWarnings(
-      if (is.null(grp_vars)) {
-        fitter(df_grand$time, df_grand$mean_prop)
-      } else {
-        .fit_cascade_by_group(df_grand, grp_vars, fitter)
-      }
-    )
-
-    if (is.null(fit) || (is.data.frame(fit) && nrow(fit) == 0L)) next
-
-    tidy <- .tidy_boot_fit(fit, grp_vars)
-    if (is.null(tidy)) next
-
-    for (i in which(spec$kind %in% c("param", "r2") & spec$fit_type == ft)) {
-      row <- tidy[tidy$group_name == spec$group_name[[i]], , drop = FALSE]
-      if (nrow(row) != 1L) next
-      col <- if (spec$kind[[i]] == "r2") "r2" else paste0("param_", spec$parameter[[i]])
-      v <- row[[col]]
-      if (length(v) == 1L && is.finite(v)) out[[i]] <- v
-    }
-  }
-
-  diff_rows <- which(spec$kind == "diff")
-  if (length(diff_rows) > 0L) {
-    out[diff_rows] <- out[spec$idx_a[diff_rows]] - out[spec$idx_b[diff_rows]]
-  }
-
-  out
-}
-
 
 #' Flag fits that landed somewhere a cascade curve normally does not
 #'
@@ -214,7 +161,9 @@
 #' @param time Numeric. Bin midpoints.
 #'
 #' @returns A tibble with `fit_type`, `group_name`, `check`, `observed`,
-#'   `prop_draws` — the share of resamples in which the condition held.
+#'   `prop_draws` (i.e., the share of the resamples that fitter converged on in
+#'   which the condition held (`NA` draws, i.e. resamples it failed, are
+#'   excluded).
 #'
 #' @noRd
 .cascade_fit_health <- function(draws, observed, spec, time) {
@@ -390,14 +339,27 @@
 #' @param need_influence Logical(1). Whether to jackknife (only BCa needs it).
 #' @param parallel,ncpus Passed to [boot::boot()].
 #'
-#' @returns List with `observed`, `draws`, `boot`, `boot_raw`, `L`, `spec`,
-#'   `n_boot`, `n_failed`, `alpha`, `health`.
+#' @returns List with `observed`, `boot_raw` (the full [boot::boot()] object,
+#'   all `n_boot` resamples), `L`, `spec`, `n_boot`, `alpha`, `health`, plus
+#'   `draws`, `boot`, `failed` and `n_failed`, each keyed by fitter name and
+#'   holding respectively that fitter's retained draws, its `boot` object
+#'   filtered to the resamples it converged on, the indices of the resamples it
+#'   dropped, and how many. Fitters are kept independently: a resample one
+#'   fitter failed can be still retained for the other.
 #'
 #' @noRd
 .bootstrap_cascade_params <- function(
-    derivatives, id_cols, grp_vars, fitters, n_boot, alpha, seed = NULL,
-    strata = NULL, need_influence = TRUE,
-    parallel = c("no", "multicore", "snow"), ncpus = 1L
+    derivatives,
+    id_cols,
+    grp_vars,
+    fitters,
+    n_boot,
+    alpha,
+    seed = NULL,
+    strata = NULL,
+    need_influence = TRUE,
+    parallel = c("no", "multicore", "snow"),
+    ncpus = 1L
 ) {
   parallel <- match.arg(parallel)
 
@@ -428,7 +390,7 @@
       by = id_cols,
       relationship = "many-to-many"
     )
-    .cascade_fit_once(boot_data, grp_vars, fitters, n_bins, window, spec)
+    .fit_cascade_once(boot_data, grp_vars, fitters, n_bins, window, spec)
   }
 
   strata_vec <- if (is.null(strata)) {
@@ -458,28 +420,42 @@
   boot_out <- if (is.null(seed)) run() else withr::with_seed(seed, run())
   if (show_progress) cli::cli_progress_done(.envir = progress_env)
 
-  ok <- stats::complete.cases(boot_out$t)
-  n_failed <- sum(!ok)
+  fit_names <- names(fitters)
+  ok_by_fit <- lapply(fit_names, function(ft) {
+    stats::complete.cases(boot_out$t[, spec$fit_type == ft, drop = FALSE])
+  })
+  names(ok_by_fit) <- fit_names
 
-  if (sum(ok) < 2L) {
+  failed_by_fit   <- lapply(ok_by_fit, function(ok) which(!ok))
+  n_failed_by_fit <- vapply(ok_by_fit, function(ok) sum(!ok), integer(1))
+  usable_by_fit   <- vapply(ok_by_fit, sum, integer(1))
+
+  if (all(usable_by_fit < 2L)) {
     cli::cli_abort(c(
-            "Fewer than two usable bootstrap resamples out of {n_boot}.",
+            "Fewer than two usable bootstrap resamples out of {n_boot} for every fitter.",
       "i" = "Every resample failed to fit, so no interval can be formed.",
       "i" = "Check the grand-average curve first: {.code plot(x)} on the {.cls mpr_gaze_cascade} object."
     ))
   }
 
-  if (n_failed > 0L) {
-    cli::cli_inform(c(
-      "!" = "{n_failed} of {n_boot} resample{?s} ({round(100 * n_failed / n_boot)}%) did not yield a complete set of fits and {?was/were} dropped.",
-      "i" = "Usually a curve that failed to converge, or a resample containing no data for some {.field grp_vars} level.",
-      "i" = "Intervals are based on {sum(ok)} resample{?s}."
-    ))
+  for (ft in fit_names) {
+    nf <- n_failed_by_fit[[ft]]
+    if (nf > 0L) {
+      cli::cli_warn(c(
+        "",
+        "!" = "{.field {ft}}: {nf} of {n_boot} resample{?s} ({round(100 * nf / n_boot)}%) failed to fit and {?was/were} dropped.",
+        "i" = "Intervals for {.field {ft}} use {usable_by_fit[[ft]]} resample{?s}; dropped indices are on {.code x$fits${ft}$failed}."
+      ))
+    }
   }
 
-  boot_ok   <- boot_out
-  boot_ok$t <- boot_out$t[ok, , drop = FALSE]
-  boot_ok$R <- sum(ok)
+  boot_by_fit <- lapply(ok_by_fit, function(ok) {
+    b <- boot_out
+    b$t <- boot_out$t[ok, , drop = FALSE]
+    b$R <- sum(ok)
+    b
+  })
+  draws_by_fit <- lapply(ok_by_fit, function(ok) boot_out$t[ok, , drop = FALSE])
 
   L <- if (need_influence) {
     if (show_progress) cli::cli_progress_step("Manually jackknifing for BCa intervals", .envir = progress_env)
@@ -492,15 +468,16 @@
 
   list(
     observed = boot_out$t0,
-    draws    = boot_ok$t,
-    boot     = boot_ok,
+    draws    = draws_by_fit,
+    boot     = boot_by_fit,
     boot_raw = boot_out,
+    failed   = failed_by_fit,
     L        = L,
     spec     = spec,
     n_boot   = n_boot,
-    n_failed = n_failed,
+    n_failed = n_failed_by_fit,
     alpha    = alpha,
-    health   = .cascade_fit_health(boot_ok$t, boot_out$t0, spec, time)
+    health   = .cascade_fit_health(boot_out$t, boot_out$t0, spec, time)
   )
 }
 
@@ -509,15 +486,16 @@
 #'
 #' @param boot_result Result of [.bootstrap_cascade_params()].
 #' @param rows Integer. Row indices into `boot_result$spec`.
-#' @param ci_type Character(1).
+#' @param ci_type Character(1). Used within [boot::boot.ci()].
+#' @param fit_name Character(1). Name of the fitter.
 #'
 #' @returns A tibble with `ci_low`, `ci_high`, `ci_type_used`.
 #'
 #' @noRd
-.cascade_intervals <- function(boot_result, rows, ci_type) {
+.cascade_intervals <- function(boot_result, rows, ci_type, fit_name) {
   purrr::map_dfr(rows, \(i) {
     tibble::as_tibble(.cascade_boot_ci(
-      boot_out = boot_result$boot,
+      boot_out = boot_result$boot[[fit_name]],
       index    = i,
       L        = if (is.null(boot_result$L)) NULL else boot_result$L[, i],
       alpha    = boot_result$alpha,
@@ -546,7 +524,7 @@
       parameter  = spec$parameter[rows],
       estimate   = boot_result$observed[rows]
     ),
-    .cascade_intervals(boot_result, rows, ci_type)
+    .cascade_intervals(boot_result, rows, ci_type, fit_name)
   )
 }
 
@@ -573,7 +551,7 @@
   if (length(rows) == 0L) return(NULL)
 
   p_value <- vapply(rows, \(i) {
-    d    <- boot_result$draws[, i]
+    d    <- boot_result$draws[[fit_name]][, i]
     n_ok <- sum(is.finite(d))
     min(1, 2 * (min(sum(d <= 0, na.rm = TRUE), sum(d >= 0, na.rm = TRUE)) + 1) / (n_ok + 1))
   }, numeric(1))
@@ -585,7 +563,7 @@
       parameter = spec$parameter[rows],
       estimate  = boot_result$observed[rows]
     ),
-    .cascade_intervals(boot_result, rows, ci_type),
+    .cascade_intervals(boot_result, rows, ci_type, fit_name),
     tibble::tibble(p_value = p_value)
   )
 }
@@ -600,8 +578,9 @@
 #' @param boot_result Result of [.bootstrap_cascade_params()].
 #' @param fit_name Character(1).
 #'
-#' @returns A list with `observed`, `draws`, `n_boot`, `n_failed`, `alpha`,
-#'   `health`.
+#' @returns A list with `observed`, `draws`, `n_boot`, `n_failed`, `failed`
+#'   (the indices of resamples this fitter dropped, into the rows of `x$boot`),
+#'   `alpha`, `health`.
 #'
 #' @noRd
 .slice_boot_fit <- function(boot_result, fit_name) {
@@ -612,12 +591,20 @@
   params <- unique(spec$parameter[rows])
 
   col_index <- function(g) {
-    idx <- vapply(params, \(p) {
-      which(spec$kind == "param" & spec$fit_type == fit_name &
-              spec$group_name == g & spec$parameter == p)
-    }, integer(1))
-    c(idx, r2 = which(spec$kind == "r2" & spec$fit_type == fit_name &
-                        spec$group_name == g))
+    idx <- vapply(
+      params,
+      \(p) {
+        which(
+          spec$kind == "param" & spec$fit_type == fit_name &
+            spec$group_name == g & spec$parameter == p
+        )
+      },
+      integer(1)
+    )
+    c(
+      idx,
+      r2 = which(spec$kind == "r2" & spec$fit_type == fit_name & spec$group_name == g)
+    )
   }
 
   nms <- c(paste0("param_", params), "r2")
@@ -629,7 +616,7 @@
   })
 
   draws <- purrr::map_dfr(groups, \(g) {
-    mat <- boot_result$draws[, col_index(g), drop = FALSE]
+    mat <- boot_result$draws[[fit_name]][, col_index(g), drop = FALSE]
     colnames(mat) <- nms
     out <- tibble::as_tibble(mat)
     out$group_name <- g
@@ -641,7 +628,8 @@
     observed = observed,
     draws    = draws,
     n_boot   = boot_result$n_boot,
-    n_failed = boot_result$n_failed,
+    n_failed = boot_result$n_failed[[fit_name]],
+    failed   = boot_result$failed[[fit_name]],
     alpha    = boot_result$alpha,
     health   = dplyr::filter(boot_result$health, .data$fit_type == .env$fit_name)
   )
@@ -650,7 +638,9 @@
 
 #' @describeIn compute Method for `mpr_gaze_cascade` objects.
 #'
-#' @param fit_type One of `"sigmoid"`, `"piecewise"`, or `"both"`.
+#' @param fit_type Character. Which curve(s) to fit: `"sigmoid"`, `"piecewise"`,
+#'   or both at once via `c("sigmoid", "piecewise")`. The two are fit and
+#'   summarised independently. Defaults to `"sigmoid"`.
 #' @param n_boot Integer(1). Number of bootstrap resamples. Defaults to `2000`.
 #' @param alpha Numeric(1). Significance level (e.g. `0.05` for 95% intervals).
 #' @param ci_type Character(1). Interval type, passed to [boot::boot.ci()]:
@@ -688,14 +678,19 @@
 #' the lower one, a breakpoint outside the observed window).
 #' `x$fits[[type]]$health` reports how often that happened across resamples.
 #'
-#' Resampling and interval construction are delegated to `{boot}`. The
-#' underlying object is returned on `x$boot`, and `x$spec` maps its columns to
-#' fit type, group and parameter, so any other interval type is directly
-#' available:
+#' Resampling is delegated to `{boot}`. The underlying object is returned
+#' unfiltered on `x$boot` (all `n_boot` resamples; a fitter's columns are `NA`
+#' on resamples it failed to converge on), and `x$spec` maps its columns to fit
+#' type, group and parameter. Because the fitters are retained independently,
+#' the resamples dropped from each are recorded separately on
+#' `x$fits[[type]]$failed`, indexing the rows of `x$boot`. To inspect a resample
+#' a fitter failed on, pull its recordings back out of the `{boot}` object with
+#' [boot::boot.array()]:
 #'
 #' ```
-#' i <- which(x$spec$kind == "param" & x$spec$parameter == "k")[1]
-#' boot::boot.ci(x$boot, index = i, type = "stud")
+#' arr <- boot::boot.array(x$boot, indices = TRUE)  # n_boot x n_recordings
+#' failed <- x$fits$sigmoid$failed                     # resamples sigmoid dropped
+#' x$boot$data[arr[failed[1], ], , drop = FALSE]       # recordings in the first
 #' ```
 #'
 #' @returns An `mpr_gaze_cascade_fit` object, i.e., a list containing:
@@ -705,10 +700,14 @@
 #'     `estimate` is the fit to the observed, un-resampled grand average}
 #'     \item{diff_summary}{Between-group parameter differences, or `NULL` if
 #'     ungrouped. `estimate` is the difference of the two observed estimates}
-#'     \item{fits}{Per-fit-type list of observed fits, raw bootstrap draws
-#'     (including `r2`), and a fit-health report}
-#'     \item{boot}{The underlying `boot` object, filtered to usable resamples}
-#'     \item{spec}{Layout mapping `boot$t` columns to fit type, group, parameter}
+#'     \item{fits}{Per-fit-type list of observed fits, retained bootstrap draws
+#'     (including `r2`), the count and indices of resamples that fitter dropped
+#'     (`n_failed`, `failed`), and a fit-health report}
+#'     \item{boot}{The underlying `boot` object, unfiltered: all `n_boot`
+#'     resamples, with `NA` in a fitter's columns on resamples it failed to
+#'     converge on. Per-fitter dropped indices are on `fits[[type]]$failed`}
+#'     \item{spec}{Layout mapping `boot$t` columns to fit type, group,
+#'     parameter}
 #'     \item{fit_type, grp_vars, alpha, ci_type}{Call metadata}
 #'   }.
 #'   Call [as_gt()] or [print()] to render `{gt}` tables, [plot()] for
@@ -717,7 +716,7 @@
 #' @export
 compute.mpr_gaze_cascade <- function(
     x,
-    fit_type = c("sigmoid", "piecewise", "both"),
+    fit_type = c("sigmoid", "piecewise"),
     n_boot = 2000L,
     alpha = 0.05,
     ci_type = c("bca", "perc", "basic", "norm"),
@@ -728,7 +727,7 @@ compute.mpr_gaze_cascade <- function(
     quiet = FALSE,
     ...
 ) {
-  fit_type <- match.arg(fit_type)
+  fit_type <- match.arg(fit_type, several.ok = TRUE)
   ci_type  <- match.arg(ci_type)
   parallel <- match.arg(parallel)
 
@@ -789,7 +788,7 @@ compute.mpr_gaze_cascade <- function(
   fitters <- list(
     sigmoid = .fit_cascade_sigmoid,
     piecewise = .fit_cascade_piecewise
-  )[if (fit_type == "both") c("sigmoid", "piecewise") else fit_type]
+  )[fit_type]
 
   boot_result <- .bootstrap_cascade_params(
     derivatives,
@@ -878,9 +877,9 @@ compute.mpr_gaze_cascade <- function(
         lapply(fit_names, \(f) .slice_boot_fit(boot_result, f)),
         fit_names
       ),
-      boot = boot_result$boot,
+      boot = boot_result$boot_raw,
       spec = boot_result$spec,
-      fit_type = fit_type,
+      fit_type = if (length(fit_type) > 1L) "both" else fit_type,
       grp_vars = grp_vars,
       alpha = alpha,
       ci_type = ci_type

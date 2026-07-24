@@ -171,5 +171,5 @@ to the class vector. Existing derivatives are silently overwritten.
 }}
 \seealso{
 \code{\link[=build_eyelink_eyetracking]{build_eyelink_eyetracking()}}, \code{\link[=compute]{compute()}},
-\code{\link[=plot.mpr_gaze_cascade]{plot.mpr_gaze_cascade()}}, \code{\link[=plot.mpr_gaze_measures]{plot.mpr_gaze_measures()}}
+\code{\link[=plot.mpr_gaze_cascade]{plot.mpr_gaze_cascade()}}
 }
