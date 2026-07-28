@@ -892,11 +892,21 @@
   group2 <- if (length(group_cols) >= 2L) group_cols[[2L]] else NULL
 
   .cor_one <- function(d) {
-    ct <- suppressWarnings(stats::cor.test(d$x_value, d$y_value))
+    n_complete <- sum(stats::complete.cases(d$x_value, d$y_value))
+    ct <- tryCatch(
+      suppressWarnings(stats::cor.test(d$x_value, d$y_value)),
+      error = function(e) {
+        cli::cli_warn(c(
+          "!" = "Correlation for {.val {stat_x}} \u00d7 {.val {stat_y}} could not be computed: {conditionMessage(e)}",
+          "i" = "Returning {.val NA} for this pair/group (n = {n_complete})."
+        ))
+        NULL
+      }
+    )
     tibble::tibble(
-      r = unname(ct$estimate),
-      n = sum(stats::complete.cases(d$x_value, d$y_value)),
-      p_value = ct$p.value
+      r = if (is.null(ct)) NA_real_ else unname(ct$estimate),
+      n = n_complete,
+      p_value = if (is.null(ct)) NA_real_ else ct$p.value
     )
   }
 

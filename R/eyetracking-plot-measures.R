@@ -441,7 +441,11 @@
   p <- ggplot2::ggplot()
 
   if (is.null(colour_by)) {
-    r_label <- sprintf("italic(r) == %.2f", cor_rows$r[[1L]])
+    r_label <- if (is.na(cor_rows$r[[1L]])) {
+      "italic(r) == 'NA'"
+    } else {
+      sprintf("italic(r) == %.2f", cor_rows$r[[1L]])
+    }
 
     p <- p +
       ggplot2::geom_smooth(
@@ -504,7 +508,10 @@
   } else {
     label_df <- cor_rows
     label_df$group_name <- label_df$group2_level
-    label_df$label <- paste0(label_df$group_name, " (r = ", sprintf("%.2f", label_df$r), ")")
+    label_df$label <- paste0(
+      label_df$group_name,
+      " (r = ", ifelse(is.na(label_df$r), "NA", sprintf("%.2f", label_df$r)), ")"
+    )
 
     data$.join_key <- as.character(data[[colour_by]])
     data <- dplyr::left_join(data, label_df[c("group2_level", "label")], by = c(".join_key" = "group2_level"))

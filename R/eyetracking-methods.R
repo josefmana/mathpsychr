@@ -82,3 +82,18 @@ as.data.frame.mpr_eyetracking <- function(x, ...) {
   }
   as.data.frame(x$derivatives)
 }
+
+
+#' Coerce an `mpr_gaze_measures_comparison` object to a data.frame
+#'
+#' Returns `x$avg_data`.
+#'
+#' @param x An `mpr_gaze_measures_comparison` object.
+#' @param ... Currently unused.
+#'
+#' @returns A `data.frame` (the `$avg_data` slot).
+#'
+#' @export
+as.data.frame.mpr_gaze_measures_comparison <- function(x, ...) {
+  as.data.frame(x$avg_data)
+}
