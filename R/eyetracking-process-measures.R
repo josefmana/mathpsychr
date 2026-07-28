@@ -440,7 +440,7 @@
     dplyr::select(
       tidyselect::all_of(grp_full),
       tidyselect::all_of(grp_vars),
-      tidyselect::contains("aoi"),
+      tidyselect::any_of("aoi"),
       tidyselect::all_of(stats)
     ) |>
     dplyr::rename_with(
