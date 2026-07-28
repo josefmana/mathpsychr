@@ -133,7 +133,7 @@ data.frame(
 
 ## Building an `mpr_eyelink_eyetracking` object
 
-`{mathpsychr}`'s downstream tools all expect a single `mpr_eyelink_eyetracking` object, built with `build_eyelink_eyetracking()`^[See `help("build_eyelink_eyetracking", package = "mathpsychr")` for full argument details.], using the following arguments:
+`{mathpsychr}`'s downstream tools all expect a single `mpr_eyelink_eyetracking` object, built with `build_eyelink_eyetracking()`, using the following arguments:
 
 ```{r eyelink-args-table, echo=FALSE}
 data.frame(
@@ -169,7 +169,7 @@ data.frame(
 
 ### AOIs and stimulus layout
 
-`{mathpsychr}`'s current workflow is built around Areas of Interest (AOIs), i.e., pre-defined display regions with task-relevant meaning (a full stimulus, a response option, a button, a feature of interest).^[Non-AOI analyses may be supported in future.]
+`{mathpsychr}`'s current workflow is built around Areas of Interest (AOIs), i.e., pre-defined display regions with task-relevant meaning (a full stimulus, a response option, a button, a feature of interest).
 
 In the **Triplet Viewing** triplet decision task, one *query* image sits above two *reference* images arranged in an equilateral triangle. Participants pick the reference more similar to the query. Naturally, `query` image, and `left` and `right` references serve as AOIs.
 
@@ -220,7 +220,7 @@ response_data <-
   )
 ```
 
-Compare the raw response data (all imported columns, prefixed by `dataset_id` and `trial_index`)...
+Compare the raw response data (all imported columns, preceded by `dataset_id` and `trial_index`)...
 
 ```{r triplet-response-raw}
 raw_data$response_data
@@ -268,7 +268,7 @@ eyelink_data <- build_eyelink_eyetracking(
 )
 ```
 
-Printing it reveals the "derived data" slot is empty. The next two sections populate it, first with a **gaze cascade** analysis, then with trial-level **eye-tracking indices** (useful, for example, as predictors of response behaviour).
+Printing it reveals the "derived data" slot is empty. The next two sections populate it, first with a **gaze cascade** analysis, then with trial-level **eye-tracking measures** (useful, for example, as predictors of response behaviour).
 
 ```{r eyelink-data-print}
 eyelink_data
@@ -306,7 +306,7 @@ gc_data <- process(
 
 Note the message about time unit conversion. `{mathpsychr}`'s response function fits downstream all assume seconds, so if `process()` detects an implausibly large `window` (> 30), it assumes milliseconds and rescales automatically.
 
-Printing the object shows two key changes compared to its `eyelink_data` predecessor. The `$derivatives` slot is now populated by a four-column tibble containing `average_prop_chosen` per time bin per recording, and its class has changed from `mpr_eyelink_eyetracking` to `mpr_gaze_cascade`. This class change forms a prerequisite for the `plot()` and `compute()` methods that follow.
+Printing the object shows two key changes compared to its `eyelink_data` predecessor. The `$derivatives` slot is now populated by a four-column tibble containing `average_prop_chosen` per time bin per recording, and its subclass has changed from `mpr_eyelink_eyetracking` to `mpr_gaze_cascade`. This subclass change forms a prerequisite for the `plot()` and `compute()` methods that follow.
 
 ```{r cascade-data}
 gc_data
@@ -351,7 +351,7 @@ The overall curve is a good sanity check, but the more interesting question is u
 
 ## Group by clusters
 
-As you have already seen, `eyelink_data`'s timings are in milliseconds, but the cascade fits expect seconds. Normally one would re-scale back at the building step and reassemble `eyelink_data`. Here, for demonstration purposes, we transform it in place instead. Note that this shortcut is generally **discouraged**, since it bypasses `build_eyelink_eyetracking()`'s validity checks.
+As you have already seen, `eyelink_data`'s timings are in milliseconds, but the cascade fits expect seconds. Normally, one would re-scale back at the building step and reassemble `eyelink_data`. Here, for demonstration purposes, we transform it in place instead. Note that this shortcut is generally **discouraged**, since it bypasses `build_eyelink_eyetracking()`'s validity checks.
 
 ```{r cascade-scaling-grouped}
 eyelink_data$fixations <- dplyr::mutate(
@@ -405,7 +405,7 @@ plot(gc_grouped_data, fit_type = "piecewise", show_grand_avg = FALSE, show_clust
   ggplot2::theme(legend.position = "bottom")
 ```
 
-Requesting more than one fit type instead facets by fit (grand average vs. sigmoid vs. piecewise), colour-coding the grouping variable within each panel.^[A future `{mathpsychr}` release may let you choose which of these two factors facets and which colours.] Cluster-level spaghetti is always dropped here to avoid clutter:
+Requesting more than one fit type instead facets by fit (grand average vs. sigmoid vs. piecewise), colour-coding the grouping variable within each panel. Cluster-level spaghetti is always dropped here to avoid clutter:
 
 ```{r cascade-plot-faceted, fig.width=7.0, fig.height=4}
 plot(gc_grouped_data, fit_type = "both")
@@ -435,7 +435,7 @@ gc_bootstrap <- compute(
 )
 ```
 
-`compute()` is deliberately chatty (you can silence it with `quiet = TRUE`). The messages above are worth reading rather than scrolling past, with the last point deserving particular emphasis. `{mathpsychr}` cannot know your data-generating process, your estimands, or the theory behind your study. Treat the numbers it computes as **low-dimensional summaries** of the data for deciding what is worth modelling properly, not as the analysis itself.^[The methods are also still **in development** and come with no guarantees.] Diagnosing the fit and sampling issues flagged above is a proper part of the workflow, but deserves its own vignette (*TBA*). Here we simply take the results as they come.
+`compute()` is deliberately chatty (you can silence it with `quiet = TRUE`, but you should not). The messages above are worth reading rather than scrolling past, with the last point deserving particular emphasis. `{mathpsychr}` cannot know your data-generating process, your estimands, or the theory behind your study. Treat the numbers it computes as **low-dimensional summaries** of the data for deciding what is worth modelling properly, not as the analysis itself.^[The methods are also still **in development** and come with no guarantees.] Diagnosing the fit and sampling issues flagged above is a proper part of the workflow, but deserves its own vignette (*TBA*). Here we simply take the results as they come.
 
 ### Results Presentation
 
@@ -448,20 +448,23 @@ as_gt(gc_bootstrap, type = "differences")
 
 The same results can be plotted via `plot.mpr_gaze_cascade_fit()`^[This method also includes diagnostic plots, which will be the subject of a later vignette.]:
 
-```{r cascade-bootstrap-plots, fig.width=7.0, fig.height=4}
+```{r cascade-sigmoid-bootstrap-plots, fig.width=7.0, fig.height=6}
 plot(gc_bootstrap, type = "estimates", fit_type = "sigmoid")
 plot(gc_bootstrap, type = "differences", fit_type = "sigmoid")
+```
+
+```{r cascade-piecewise-bootstrap-plots, fig.width=7.0, fig.height=3}
 plot(gc_bootstrap, type = "estimates", fit_type = "piecewise")
 plot(gc_bootstrap, type = "differences", fit_type = "piecewise")
 ```
 
-The bootstrapping analysis lends some support the baseline-level pattern noted above. High-agreement triplets sit about 0.03 higher at baseline than either low- or medium-agreement ones, consistently across both fits, while low and medium are seemingly indistinguishable from each other. Whatever difficulty does to the gaze cascade in these data, it seems to shift where the curve *starts*, not how or when it *rises*.
+The bootstrapping analysis lends some support the baseline-level pattern noted above. High-agreement triplets sit about 0.03 (i.e., 3%) higher at baseline than either low- or medium-agreement ones, consistently across both fits, while low and medium are seemingly indistinguishable from each other. Whatever difficulty does to the gaze cascade in these data, it seems to shift where the curve *starts*, not how or when it *rises*.
 
 ---
 
 # Eye-tracking measures
 
-`{mathpsychr}`'s other use of eye-tracking data is to compute trial-level measures reflecting AOI-specific fixation behaviour and scan path. Currently, the following measures are available:
+`{mathpsychr}`'s other use of eye-tracking data is to compute trial-level measures reflecting fixation behaviour and scan path. Currently, the following measures are available:
 
 ```{r measures-list, echo=FALSE}
 tibble::tribble(
@@ -539,7 +542,7 @@ em_data
 
 Two subtler differences are worth noting:
 
-* Where `process(..., type = "cascade")` averages across trials within a time bin, here everything is summarised *within* trial. The results are therefore unaffected by `grp_vars` (unless those vary within-trial), which can, and should, still be declared at the `process()` step and optionally ignored later in `compute()`.
+* Wherever `process(..., type = "cascade")` averages across trials within a time bin, here everything is summarised *within* trial. The results are therefore unaffected by `grp_vars` (unless those vary within-trial too), which can, and should, still be declared at the `process()` step, but could be optionally ignored later in `compute()`.
 * Instead of `window` and `n_bins`, this object stores `trial_vars` (both store `id_cols` and, when present, `grp_vars`), which downstream computations use to identify rows:
 
 ```{r measures-attributes}
@@ -567,110 +570,198 @@ em_comparisons <- compute(
   stats = NULL,
   alpha = 0.05,
   p_adjust_method = "bonferroni",
-  correlate = FALSE # if `TRUE` enables inspection of (optionally per-group) measure correlations
+  correlate = TRUE # enables inspection of (optionally per-group) measure correlations
 )
 ```
 
 As with `compute.mpr_gaze_cascade()`, the messages carry caveats worth reading. Most consequentially, `{mathpsychr}` *infers* within- vs. between-subject structure from the data rather than being told. Here both `aoi` and `difficulty_bin` were treated as within-subject, which decides whether paired or unpaired tests were run. Always check that against your actual design. Note too that the *p*-value adjustments apply within each measure's post-hoc family, not across the omnibus tests, so the omnibus column should be read as unadjusted.
 
+Before examining statistical comparison results, it is worth noting, that the `mpr_gaze_measures_comparisons` object comes with recording (participant)-level average data, that are used as inputs to the aforementioned ANOVAs and can be further examined by the user:
+
+```{r measures-computation-data}
+# Can also be extracted via: as.data.frame(em_comparisons)
+em_comparisons$avg_data
+```
+
 ### Results presentation
 
-`as_gt()` offers descriptive statistics (`which = "descriptive"`), omnibus tests of zero mean differences (`which = "test"`), and post-hoc pairwise comparisons (`which = "pairwise"`). Starting with the omnibus tests for each measure category:
+`as_gt()` offers descriptive statistics (`type = "descriptive"`), omnibus tests of zero mean differences (`type = "test"`), and post-hoc pairwise comparisons (`type = "pairwise"`). Correspondingly, `plot()` draws violin plots with mean and 95% CIs (`type = "violin"`) faceted by selected measures, or a scatter-dot plot with Pearson's correlation coefficient relating any two measures (`type = "scatter"`).
 
-```{r measures-omnibus-tabs}
+### AOI-scope measures
+
+Recall that an **AOI-scope measure** is computed separately for each AOI, including *dwell time* and its moments (mean, median, SD), *first* and *last fixation time*, *fixation count*, and *revisits count*. In the Triplet Viewing data, all are affected by both AOI and triplet difficulty:
+
+```{r measures-aoi-omnibus-tab}
 as_gt(em_comparisons, type = "test", scope = "aoi")
-# `scope` uses partial matching, so "cat" counts as "categorical"
-as_gt(em_comparisons, type = "test", scope = "cat")
+```
+
+**How much are the images inspected.** A potentially revealing pattern can be observed by contrasting *total* and *mean dwell times*. Whereas the analysis detected clear triplet difficulty-dependent differences in total dwell times across AOIs, the same was not true for the mean dwell time. In the latter case, only the high-agreement triplets differed significantly from the rest, mainly for the query and non-chosen images. Notably, *fixation count* mirrors the pattern of results observed for *total dwell time*. The two measures also correlate tightly, while only small correlation was observed between *fixation count* and *mean dwell time*. Taken together, this pattern is consisent with a reading that it is total effort spent gathering evidence, rather than how that effort is split across AOIs, that reflects decision difficulty in the task. To evaluate this conjecture more comprehensively, we examine the stimulus-scope and categorical measures next.
+
+```{r measures-aoi-pairwise-tabs}
+aoi_stats <- c(
+  "dwell_time_mean",
+  "dwell_time_total",
+  "fixation_count",
+  "revisits_count"
+)
+
+as_gt(em_comparisons, type = "descriptive", stats = aoi_stats)
+as_gt(em_comparisons, type = "pairwise", stats = aoi_stats[1:2])
+```
+
+```{r measures-aoi-violin-plots, fig.width=7.0, fig.height=6.6}
+plot(em_comparisons, type = "violin", stats = aoi_stats) +
+  ggplot2::theme(legend.position = "bottom")
+```
+
+```{r measures-aoi-scatter-plots, fig.width=7.0, fig.height=4.0}
+plot(em_comparisons, type = "scatter", stats = aoi_stats[c(1L, 2L)])
+plot(em_comparisons, type = "scatter", stats = aoi_stats[c(1L, 3L)])
+plot(em_comparisons, type = "scatter", stats = aoi_stats[c(2L, 3L)])
+```
+
+### Stimilus-scope measures
+
+A **stimulus-scope** measure receives a single, AOI-invariant score per trial. These include the number of *switches*, total *watch time*, *first* and *last reference fixation times*, and *transition* counts between AOIs (query↔references, and reference↔reference). Each transition measure comes in a *direct* flavour (AOI-to-AOI with no intervening fixation) and a *total* flavour (counting AOI-to-blank-to-AOI paths too). We use the total versions here, since direct counts can be confounded by saccade accuracy.
+
+```{r measures-stimulus-omnibus-tab}
+stim_stats <- c(
+  "switches_total",
+  "watch_time",
+  "first_reference_fixation_start",
+  "last_reference_fixation_end",
+  "transitions_ref_to_ref",
+  "transitions_query_refs",
+  "transitions_query_ref1",
+  "transitions_query_ref2"
+)
+
 # Even when `scope = "stimulus"` compares two groups only, ANOVAs are still reported for
 # `type = "test"`. Run `type = "pairwise"` to inspect t-test results
-as_gt(em_comparisons, type = "test", scope = "stim")
+as_gt(em_comparisons, type = "test", stats = stim_stats)
 ```
 
-### Following up on the omnibus tests
+The only stimulus-scope measure without a detectable difficulty effect is *first reference fixation time*. To avoid visual clutter, we show the descriptives, then contrast this measure measure against the total switch/transition counts in more detail.
 
-With 49 highly related tests, nearly everything carries an asterisk, so the effect-size column is the more useful guide. Reading generalised $\eta^2$ rather than *p*, and pairing each result with its distribution, three themes can be extarcted from the resuls.
-
-**Which reference is inspected first.** `first_fixated_aoi` and `first_fixated_reference` code the *proportion of trials* on which a given AOI was fixated first, with the reference-only version showing the single largest interaction in the whole analysis ($\eta^2_G$ = 0.371).^[Note that the zero main effect of difficulty factor is structural. Because the proportions must sum to one across AOIs, the difficulty factor cannot shift the average.] In high-agreement triplets the eventually chosen reference is fixated first on roughly 70% of trials, falling towards circa 55% as agreement drops. In comparison, the proportion of fixating the eventually chosen image as the last reference (`last_fixated_reference`) remains high at around 70-75% across difficulties.
-
-```{r measures-pairwise-first-fixated-reference-tab}
-as_gt(
-  em_comparisons,
-  type = "descriptive",
-  stats = c("first_fixated_reference", "last_fixated_reference")
-)
-as_gt(
-  em_comparisons,
-  type = "pairwise",
-  stats = c("first_fixated_reference", "last_fixated_reference")
-)
+```{r measures-stimulus-descriptive-tab}
+as_gt(em_comparisons, type = "desc", stats = stim_stats)
 ```
 
-```{r measures-pairwise-first-fixated-reference-plot, fig.width=7.0, fig.height=4}
-plot(
-  em_comparisons,
-  type = "violin",
-  stats = c("first_fixated_reference", "last_fixated_reference")
-) +
+**How much scanning happens at all.** *First reference fixation time* — when the first reference was fixated, regardless of which one — is the only stimulus-scope measure independent of total time on task, and the only one flat across difficulty, holding at 480–500 ms. Every other measure moves: total switches drop from ~8 to ~6.6 across the low-to-high bins, significantly so. The correlation structure echoes the AOI-scope story exactly — the effort-*allocation* proxy (first reference fixation time) barely correlates with the time-on-task proxy (watch time), while the total-*effort* proxies (switches, transitions) correlate almost perfectly with it. So again: total evidence-accumulation effort tracks difficulty, its allocation does not. But stimulus-scope measures cannot speak to allocation at all, since they ignore fixation location. That final piece comes from the categorical measures.
+
+**How much scanning happens at all.** *First reference fixation time*, i.e., when the first reference was fixated, regardless of which one it was, is the only stimulus-scope measure independent of total time on task, and the only one without a detectable change across triplet difficulty, remaining between 480–500 ms.^[Note that this is another case in which `{mathpsychr}`'s exploratory statistical machinery tells only a part of the story. It sounds reasonable and indeed desirable to combine this data with information about **which** AOI was the first reference fixated into a single model. The user can do so straightforwardly by pulling the trial-wise average data from `em_comparisons` via `as.data.frame(em_comparisons)`.] In comparison, total *switches* drop from  ~8 to ~6.6 across the low-to-high-agreement bins, statistically significantly so. The correlation structure also echoes the AOI-scope results, with the effort-*allocation* proxy (first reference fixation time) barely correlating with the time-on-task proxy (watch time), while the total-*effort* proxies (switches, transitions) correlate almost perfectly with it. These results reinforce the idea that total evidence-accumulation effort tracks difficulty better than its allocation does. However, stimulus-scope measures cannot speak to allocation at all, since they ignore fixation location. That final piece comes from the categorical measures.
+
+```{r measures-stimulus-pairwise-tab}
+as_gt(em_comparisons, type = "pair", stats = stim_stats[c(3L, 1L)])
+```
+
+```{r measures-stimulus-violin-plot, fig.width=7.0, fig.height=8.0}
+plot(em_comparisons, type = "violin", stats = stim_stats) +
+  ggplot2::scale_x_discrete(labels = c(
+    "Low\n(50-65%]",
+    "Medium\n(65-85%]",
+    "High\n(85-100%]"
+  ))
+```
+
+```{r measures-stimulus-scatter-plots, fig.width=7.0, fig.height=4.0}
+plot(em_comparisons, type = "scatter", stats = stim_stats[c(2L, 3L)])
+plot(em_comparisons, type = "scatter", stats = stim_stats[c(2L, 1L)])
+```
+
+### Categorical measures
+
+A **categorical** measure returns an AOI label per trial rather than a number. They include *first* and *last fixation location*. `{mathpsychr}` turns these into per-participant proportions of trials with the first/last fixation on each AOI, then runs them through the same ANOVA → pairwise t-test pipeline as the AOI-scope measures.^[Strictly speaking, this is incorrect. The `grp_vars[1L]` main effect is structurally zero, and with only two AOIs the proportion for `aoi[1L]` is just 1 − the proportion for `aoi[2L]`, which overestimates the pairwise difference. This is a case where the user should reach for custom testing even on the aggregated data, e.g. binomial proportion tests.]
+
+```{r measures-categorical-omnibus-tab}
+# `scope` uses partial matching, so "cat" counts as "categorical"
+as_gt(em_comparisons, type = "test", scope = "cat")
+```
+
+**Which reference is inspected first.** *Last fixation* stays firmly on the eventually chosen image (~70–75%), with only a small (~3%) low-vs-high-agreement difference. *First fixation* is where the difficulty affects evidence accumulation allocation. The chosen reference is fixated first on ~70% of high-agreement trials, falling towards ~55% as agreement drops. Furthermore, this proportion does *not* substantially correlate with watch time or fixation count, and can thus be regarded statistically independent of total effort. This is the single clearest effort-*allocation* signature of difficulty in the whole eye-tracking measures analysis. It also connects straight back to the gaze cascade, where high-agreement triplets showed higher baseline that constitutes the same early bias toward the eventually chosen image. The final section isolates it by looking only at the opening seconds of viewing, before the cascade break point.
+
+``` {r measures-categorical-pairwise-tabs}
+cat_stats <- c(
+  "first_fixated_reference",
+  "last_fixated_reference"
+)
+
+as_gt(em_comparisons, type = "descriptive", scope = "categorical")
+as_gt(em_comparisons, type = "pairwise", stats = cat_stats)
+```
+
+``` {r measures-categorical-violin-plot, fig.width=7.0, fig.height=4.0}
+plot(em_comparisons, type = "violin", stats = cat_stats)  +
   ggplot2::theme(legend.position = "bottom")
 ```
 
-Note that the proportion of first fixations is distinct from `first_fixation_start`, which records *when* each AOI was first fixated. Its large AOI effect ($\eta^2_G$  = 0.749) is mostly due to the task layout: the query sits at the apex of the triangle and is fixated within ~0.25 s, while both references only at around 0.65–0.95 s. The informative part is the chosen/unchosen split within this factor, where the unchosen reference is reached later, and increasingly so as agreement rises. The chosen-vs-unchosen difference goes from about 0.08 s for triplets with least agreement to about 0.29 s for the triplets with the highest agreement. In the plot below, this difference is put side-to-side with `fixation_count`, a commonly used eye-tracking measure that does not show nearly as strong interaction between AOI and item difficulty.
+```{r measures-categorical-scatter-plots, fig.width=7.0, fig.height=4.0}
+plot(em_comparisons, type = "scatter", stats = c("watch_time", "first_fixated_reference"))
+plot(em_comparisons, type = "scatter", stats = c("fixation_count", "first_fixated_reference"))
+```
 
-```{r measures-pairwise-first-fixation-time-tab}
-as_gt(
-  em_comparisons,
-  type = "pairwise",
-  stats = "first_fixation_start"
+### Shorter time window
+
+To strip out the pre-response cascade, we can shrink the measurement window. With the cascade break point around 0.7 s before the response, a median response time near 3 s, and the first quartile near 2 s, a **1-second** window should capture enough early data while dodging the cascade.
+
+```{r response-time-sum}
+summary(em_data$responses$response_time)
+```
+
+```{r measures-processing-short, cache=TRUE}
+stats_1 <- c(
+  "first_fixated_reference",
+  "dwell_time_mean",
+  "dwell_time_total",
+  "fixation_count"
+)
+
+em_data_1 <- process(
+  eyelink_data,
+  type = "measures",
+  trial_vars = c("block", "trial"),
+  grp_vars = "difficulty_bin",
+  stats = stats_1,
+  window = 1,
+  query_aoi = "query",
+  reference_aois = c("left", "right"),
+  chosen_aoi_col = "chosen_aoi",
+  response_opts = NULL
+)
+
+em_data_1
+```
+
+Note that in the new `em_data_1$derivatives`, each computed measure comes with the window suffix (`*_1`), helping it to be joined with full trial or other window data if desired. Here, we simply push the data as is through the `compute()` pipeline and present the results:
+
+```{r measures-computation-short, cache=TRUE}
+em_comparisons_1 <- compute(
+  em_data_1,
+  by_group = TRUE,
+  stats = NULL, # Include all computed measures
+  alpha = 0.05,
+  p_adjust_method = "bonferroni",
+  correlate = FALSE
 )
 ```
 
-```{r measures-pairwise-first-fixation-time-plot, fig.width=7.0, fig.height=4}
-plot(
-  em_comparisons,
-  type = "violin",
-  stats = c("first_fixation_start", "fixation_count")
-) +
-  ggplot2::theme(legend.position = "bottom")
+```{r measures-short-tabs}
+# Within R terminal, all computed statistics with `type = "test"`
+# can be collectively printed via `print(em_comparisons_2)`
+as_gt(em_comparisons_1, scope = "cat")
+as_gt(em_comparisons_1) # By default, the function prints `scope = "aoi"`
 ```
 
-**How much the chosen image is inspected.** `dwell_time_total` ($\eta^2_G$ = 0.077) and `revisits_count` ($\eta^2_G$ = 0.120) show similar pattern of results with lowering especially for the least difficult decision (i.e., items with high agreement).
-
-```{r measures-descriptive-dwell-tab}
-as_gt(
-  em_comparisons,
-  type = "descriptive",
-  stats = c("dwell_time_total", "revisits_count")
-)
+```{r measures-short-violin-plots, fig.width=7.0, fig.height=6.6}
+plot(em_comparisons_1) + ggplot2::theme(legend.position = "bottom")
 ```
 
-```{r measures-pairwise-dwell-plot, fig.width=7.0, fig.height=4}
-plot(
-  em_comparisons,
-  type = "violin",
-  stats = c("dwell_time_total", "revisits_count")
-) +
-  ggplot2::theme(legend.position = "bottom")
+**What early gaze says about difficulty.** *First fixated reference* barely changes from the full-trial analysis, as expected. But now the AOI-specific *total dwell time* and *fixation count*, and to a lesser degree *mean dwell time*, mirror the same effect. Within the first second, participants on easy (high-agreement) triplets already allocate disproportionately more attention to the eventually chosen reference than on harder ones. Over the full trial that allocation difference washes out. It lives specifically in the opening moments, before the cascade takes over. The side-by-side below makes this contrast explicit.
+
+```{r measures-versus-violin-plots, fig.width=7.0, fig.height=4.0}
+plot(em_comparisons_1, stats = stats_1[c(2L, 3L)]) + ggplot2::theme(legend.position = "bottom")
+plot(em_comparisons, stats = stats_1[c(2L, 3L)]) + ggplot2::theme(legend.position = "bottom")
 ```
-
-**How much scanning happens at all.** Every transition count^[We report the total rather than `direct_` transition counts here. The construct of interest is a comparison episode between two stimuli, and a saccade that clips blank screen en route is still one comparison. Restricting to direct paths turns the measure partly into an index of saccadic precision. The two versions track each other closely in these data, so reporting both would be redundant.], both switch counts, and watch time decline monotonically from low- through medium- to high-agreement triplets. Easy decisions are simply looked at less, in every way the measures can register. The lone exception is `first_reference_fixation_start` (*p* = .069), flat at ~0.50 s across all three bins. *When* gaze first reaches a reference does not depend on difficulty, only which reference it is, and how much comparison follows.
-
-```{r measures-descriptive-transitions-tab}
-as_gt(
-  em_comparisons,
-  type = "descriptive",
-  stats = c("transitions_ref_to_ref", "transitions_query_refs", "switches_total", "watch_time")
-)
-```
-
-```{r measures-descriptive-transitions-plot, fig.width=7.0, fig.height=4}
-plot(
-  em_comparisons,
-  type = "violin",
-  stats = c("transitions_ref_to_ref", "switches_total", "watch_time")
-)
-```
-
-Read together, the three themes agree with the gaze cascade section. Difficulty seemingly leaves the *shape* (when gaze first reaches a reference, how steeply the cascade rises) of looking behaviour largely untouched. Instead, it shifts how early and how strongly gaze commits to the eventually chosen image, and how much comparison is needed to get there. As always, these are summaries meant to point at what deserves proper modelling, not the model itself.
 
 ---
 
@@ -715,25 +806,41 @@ data.frame(
   )
 ```
 
-Two design decisions do most of the work here. First, `process()` records its own settings (`window`, `n_bins`, `id_cols`, `grp_vars`, `trial_vars`) as attributes on `$derivatives`, so nothing downstream has to be told twice, and nothing downstream can silently disagree with how the data were built. Second, the S3 class carried by the object determines which `compute()` and `plot()` methods apply, so the same four verbs cover both analyses.
+Two design decisions do most of the work. First, `process()` records its own settings (`window`, `n_bins`, `id_cols`, `grp_vars`, `trial_vars`) as attributes on `$derivatives`, so nothing downstream has to be told twice, and nothing downstream can silently disagree with how the data were built. Second, the S3 subclass carried by the object selects which `compute()` and `plot()` methods apply, so the same four verbs cover both the cascade and the measures analyses.
 
 ## What the Triplet Viewing data showed
 
-Both halves of the analysis converge on the same conclusion, which is reassuring given that they summarise the same fixations in almost entirely different ways.
+The **cascade** analysis found the effect intact. The chosen/unchosen dwell ratio climbs steeply in the last second before the response, with sigmoid and piecewise fits agreeing closely. Across difficulty bins, the curves were near-identical in *shape*, separating only at the baseline, where high-agreement triplets sat ~0.03 higher than low or medium ones.
 
-The cascade analysis found the effect intact: the chosen/unchosen dwell ratio rises steeply in the second or so before the response, with sigmoid and piecewise fits agreeing closely. Across difficulty bins the curves were near-superimposable in *shape*, differing only in baseline, where high-agreement triplets sat about 0.03 higher than low or medium ones.
+The **measures** analysis then decomposed that baseline shift and added further information:
 
-The measures analysis then located that baseline shift in the underlying behaviour. In high-agreement triplets, the chosen reference was fixated first on 69.4% of trials against 55.7% in the low bin; it was reached about 0.29 s sooner than the unchosen one, against 0.08 s in the low bin; and it accumulated more dwell time and more revisits, almost independently of difficulty bin. Meanwhile every scanning measure (transitions, switches, watch time) declined monotonically as agreement rose. Easy triplets got less looking of every kind, and what looking they did get was committed to the eventual choice from the outset. Notably, `last_fixated_reference` stayed flat at roughly 70–75% across all three bins: by the end of a trial, gaze is on the chosen image regardless of difficulty. Difficulty determines how early that commitment appears, not whether it does.
+* *Total effort tracks difficulty.* Total dwell time, fixation count, switch and transition counts all fall monotonically as agreement rises, and correlate tightly with each other. Easy triplets simply get less scanning of every kind.
+* *Effort allocation mostly does not.* Mean dwell time, and the timing of first reference contact (~480–500 ms), barely move with difficulty and are statistically independent of total effort.
+* *With one exception.* *Which* reference is looked at first does shift: the eventually chosen image is fixated first on ~70% of high-agreement trials versus ~55% of low-agreement ones, independent of total effort. This is the measures-side twin of the cascade's baseline shift.
+* *And it is an opening-moments effect.* Restricting to the first second of viewing, the chosen-vs-unchosen dwell and fixation-count asymmetry reappears in the AOI-scope measures, representing an allocation difference that washes out over the full trial but is clearly present before the cascade takes hold.
+
+Taken together, the presented data and models imply that difficulty changes how *much* looking a triplet receives, and how *early* gaze commits to the eventual choice, but not the overall shape of the cascade, nor where gaze ends up.
 
 ## Caveats worth repeating
 
-`{mathpsychr}` deliberately warns loudly, and those warnings are load-bearing. The bootstrap discarded roughly a fifth of its resamples to non-convergence; some intervals fell back from BCa to percentile; the ANOVAs inferred a within-subject structure that only you can verify against your design. None of this invalidates the exploration, but all of it should stop you reporting these numbers as if they came from a model.
+`{mathpsychr}` deliberately warns loudly, and those warnings are not to be taken lightly. The cascade bootstrap discarded roughly a fifth of its resamples due to non-convergence and fell back from BCa to percentile intervals estimation in places; the measures ANOVAs *inferred* a within-subject structure which only the user can verify against their design; and the categorical-measure tests are, strictly, mis-specified (structurally-zero main effect, complementary two-AOI proportions). None of this invalidates the exploration, but all of it should stop the user from reporting these numbers as if they came from a model.
 
-That is the intended use. Everything here is a **low-dimensional summary** designed to show you where the structure in your data lives, so that the model you eventually fit with your own theory, your own estimands, and your own account of the data-generating process, is aimed correctly.
+That is the intended use. Everything here is a **low-dimensional summary** meant to show one where the structure in their data lives, so the model they eventually fit, with their own theory, estimands, and account of the data-generating process, is aimed at the right target.
 
-## Where next
+## Where next (TBA)
 
-* **Fit diagnostics and bootstrap sampling issues**: the convergence failures, BCa fallbacks, and R^2^ anomalies flagged throughout, in a dedicated vignette (*TBA*).
-* **`plot.mpr_gaze_cascade_fit(type = "diagnostic")`**: the diagnostic plots deferred here.
-* **Measure correlations**: via `compute(..., correlate = TRUE)`; with 49 highly related measures, that structure is worth a section of its own.
-* **Trial-level prediction**: the measures in `em_data` are trial-level and ready to serve as predictors of choice or response time, which is where the modelling proper begins.
+* **Fit diagnostics and bootstrap sampling issues**  
+  The convergence failures, BCa fallbacks, and R^2^ anomalies flagged throughout, in a dedicated vignette.
+* **Custom tests where the built-ins fall short**  
+  Binomial proportion tests for the categorical measures, and a joint model tying *which* reference is fixated first to *when*, both buildable
+  from `as.data.frame(em_comparisons)`.
+* **Trial-level prediction**  
+  The per-trial measures in `em_data` are ready to serve as predictors of choice or response time, which is where the modelling proper begins.
+
+---
+
+# Session info
+
+```{r session-info, echo=FALSE}
+sessionInfo()
+```
