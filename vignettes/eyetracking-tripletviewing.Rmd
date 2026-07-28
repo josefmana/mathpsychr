@@ -827,16 +827,6 @@ Taken together, the presented data and models imply that difficulty changes how 
 
 That is the intended use. Everything here is a **low-dimensional summary** meant to show one where the structure in their data lives, so the model they eventually fit, with their own theory, estimands, and account of the data-generating process, is aimed at the right target.
 
-## Where next (TBA)
-
-* **Fit diagnostics and bootstrap sampling issues**  
-  The convergence failures, BCa fallbacks, and R^2^ anomalies flagged throughout, in a dedicated vignette.
-* **Custom tests where the built-ins fall short**  
-  Binomial proportion tests for the categorical measures, and a joint model tying *which* reference is fixated first to *when*, both buildable
-  from `as.data.frame(em_comparisons)`.
-* **Trial-level prediction**  
-  The per-trial measures in `em_data` are ready to serve as predictors of choice or response time, which is where the modelling proper begins.
-
 ---
 
 # Session info
