@@ -444,7 +444,8 @@
       cli::cli_warn(c(
         "",
         "!" = "{.field {ft}}: {nf} of {n_boot} resample{?s} ({round(100 * nf / n_boot)}%) failed to fit and {?was/were} dropped.",
-        "i" = "Intervals for {.field {ft}} use {usable_by_fit[[ft]]} resample{?s}; dropped indices are on {.code x$fits${ft}$failed}."
+        "i" = "Intervals for {.field {ft}} use {usable_by_fit[[ft]]} resample{?s}.",
+        "i" = "Identify dropped indices via {.code x$fits${ft}$failed} (see {.help [{.fun compute}](mathpsychr::compute)} to learn more)."
       ))
     }
   }
@@ -688,9 +689,9 @@
 #' [boot::boot.array()]:
 #'
 #' ```
-#' arr <- boot::boot.array(x$boot, indices = TRUE)  # n_boot x n_recordings
-#' failed <- x$fits$sigmoid$failed                     # resamples sigmoid dropped
-#' x$boot$data[arr[failed[1], ], , drop = FALSE]       # recordings in the first
+#' arr <- boot::boot.array(x$boot, indices = TRUE)
+#' failed <- x$fits$sigmoid$failed               # resamples sigmoid dropped
+#' x$boot$data[arr[failed[1], ], , drop = FALSE] # recordings in the first dropped resample
 #' ```
 #'
 #' @returns An `mpr_gaze_cascade_fit` object, i.e., a list containing:

@@ -1,3 +1,7 @@
+# Point and range sizes
+.cascade_fit_point_size <- 3.0
+.cascade_fit_line_width <- 0.8
+
 #' Resolve which fit type(s) a plot call should cover
 #'
 #' `x$fits` is keyed by `"sigmoid"`/`"piecewise"`, `x$fit_type` records what
@@ -234,10 +238,12 @@
         xmin = .data$ci_low,
         xmax = .data$ci_high
       ),
-      linewidth = 0.9,
+      linewidth = 0.85,
       orientation = "y"
     ) +
-    ggplot2::geom_point(size = 2.4) +
+    ggplot2::geom_point(
+      size = .cascade_fit_point_size
+    ) +
     ggplot2::scale_colour_manual(
       values = palette,
       guide = "none"
@@ -322,12 +328,12 @@
         xmin = .data$ci_low,
         xmax = .data$ci_high
       ),
-      linewidth = 0.9,
+      linewidth = .cascade_fit_line_width,
       colour = "#2C7FB8",
       orientation = "y"
     ) +
     ggplot2::geom_point(
-      size = 2.4,
+      size = .cascade_fit_point_size,
       colour = "#2C7FB8"
     ) +
     ggplot2::facet_wrap(
@@ -405,7 +411,7 @@
     ggplot2::geom_vline(
       data = ref,
       ggplot2::aes(xintercept = .data$estimate),
-      linewidth = 0.6,
+      linewidth = .cascade_fit_line_width,
       colour = "black"
     ) +
     ggplot2::scale_fill_manual(

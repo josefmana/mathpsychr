@@ -149,7 +149,7 @@
         response_opts <- reference_aois
         cli::cli_warn(c(
           "",
-          "x" = "both {.arg chosen_aoi_col} and {.arg reference_aois} were specified without providing {.arg response_opts}.",
+          "!" = "both {.arg chosen_aoi_col} and {.arg reference_aois} were specified without providing {.arg response_opts}.",
           "i" = "{.arg response_opts} set to {.arg reference_aois}: {.val {reference_aois}}"
         ))
       } else {

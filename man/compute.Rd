@@ -190,9 +190,9 @@ the resamples dropped from each are recorded separately on
 a fitter failed on, pull its recordings back out of the \code{{boot}} object with
 \code{\link[boot:boot.array]{boot::boot.array()}}:
 
-\if{html}{\out{<div class="sourceCode">}}\preformatted{arr <- boot::boot.array(x$boot, indices = TRUE)  # n_boot x n_recordings
-failed <- x$fits$sigmoid$failed                     # resamples sigmoid dropped
-x$boot$data[arr[failed[1], ], , drop = FALSE]       # recordings in the first
+\if{html}{\out{<div class="sourceCode">}}\preformatted{arr <- boot::boot.array(x$boot, indices = TRUE)
+failed <- x$fits$sigmoid$failed               # resamples sigmoid dropped
+x$boot$data[arr[failed[1], ], , drop = FALSE] # recordings in the first dropped resample
 }\if{html}{\out{</div>}}
 
 Each measure is routed by its AOI/Stimulus scope (see
