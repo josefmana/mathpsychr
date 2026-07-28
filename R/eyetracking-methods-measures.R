@@ -68,6 +68,34 @@
 }
 
 
+#' Per-row decimal choice for raw measure values
+#' @noRd
+.measure_row_decimals <- function(...) {
+  cols <- lapply(list(...), abs)
+  mins <- suppressWarnings(do.call(pmin, c(cols, list(na.rm = TRUE))))
+  maxs <- suppressWarnings(do.call(pmax, c(cols, list(na.rm = TRUE))))
+  dplyr::case_when(
+    is.na(mins) | is.infinite(mins) ~ 2L,
+    mins < 1 ~ 3L,
+    maxs >= 100 ~ 0L,
+    .default = 2L
+  )
+}
+
+
+#' Format raw measure value(s) at per-row decimals; thousands comma when 0dp
+#' @noRd
+.fmt_measure <- function(x, decimals) {
+  vapply(seq_along(x), function(i) {
+    if (is.na(x[i]) || is.na(decimals[i])) return(NA_character_)
+    formatC(
+      x[i], format = "f", digits = decimals[i],
+      big.mark = if (decimals[i] == 0L) "," else ""
+    )
+  }, character(1L))
+}
+
+
 #' Apply per-column labels and a `tab_spanner()` for one pivoted-wide group
 #' level
 #'
@@ -189,7 +217,7 @@
 #' object
 #'
 #' Adds `qt()`-based CI columns, and a pre-formatted display string per row:
-#' `scales::percent()` for `scope == "categorical"` rows, `sprintf("%.1f", ...)`
+#' `scales::percent()` for `scope == "categorical"` rows, `sprintf("%.2f", ...)`
 #' otherwise. AOI-scope and categorical rows use `rowname_col = "aoi"`;
 #' Stimulus-scope rows use `rowname_col = grp_vars[1]` (or a synthetic
 #' `"Overall"` row when there is no `grp_vars`), spanning `grp_vars[2]` when
@@ -216,10 +244,11 @@
       ci_low = .data$level_mean - .data$.hw,
       ci_high = .data$level_mean + .data$.hw,
       .is_pct = .data$scope == "categorical",
+      .dec = .measure_row_decimals(.data$level_mean, .data$ci_low, .data$ci_high),
       level_mean_display = dplyr::if_else(
         .data$.is_pct,
         scales::percent(.data$level_mean, accuracy = 0.1),
-        sprintf("%.1f", .data$level_mean)
+        .fmt_measure(.data$level_mean, .data$.dec)
       ),
       ci_display = dplyr::case_when(
         is.na(.data$ci_low) | is.na(.data$ci_high) ~ NA_character_,
@@ -228,10 +257,14 @@
           scales::percent(.data$ci_low, accuracy = 0.1),
           scales::percent(.data$ci_high, accuracy = 0.1)
         ),
-        .default = sprintf("[%.1f, %.1f]", .data$ci_low, .data$ci_high)
+        .default = sprintf(
+          "[%s, %s]",
+          .fmt_measure(.data$ci_low, .data$.dec),
+          .fmt_measure(.data$ci_high, .data$.dec)
+        )
       )
     ) |>
-    dplyr::select(-".se", -".hw", -".is_pct")
+    dplyr::select(-".se", -".hw", -".is_pct", -".dec")
 
   df <- .gt_measures_subset(df, scope, stats)
   if (nrow(df) == 0L) {
@@ -472,10 +505,19 @@
           paste0(.data$measure_label, " \u2014 ", .data[[dynamic_col]])
         )
       },
+      .dec = if (has_ci) {
+        .measure_row_decimals(.data$estimate, .data$conf.low, .data$conf.high)
+      } else {
+        .measure_row_decimals(.data$estimate)
+      },
       ci_display = if (has_ci) {
         dplyr::if_else(
           !is.na(.data$conf.low) & !is.na(.data$conf.high),
-          sprintf("[%.2f, %.2f]", .data$conf.low, .data$conf.high),
+          sprintf(
+            "[%s, %s]",
+            .fmt_measure(.data$conf.low, .data$.dec),
+            .fmt_measure(.data$conf.high, .data$.dec)
+          ),
           NA_character_
         )
       } else {
@@ -489,7 +531,8 @@
         )
       } else {
         NA_character_
-      }
+      },
+      estimate = .fmt_measure(.data$estimate, .data$.dec)
     )
 
   groupname_col <- if (flatten) NULL else ".group_label"
@@ -529,7 +572,7 @@
 
   gt_obj <- gt_obj |>
     gt::fmt_number(columns = tidyselect::where(is.numeric), decimals = 3) |>
-    gt::fmt_number(columns = tidyselect::any_of(c("estimate", "cohens_d")), decimals = 2) |>
+    gt::fmt_number(columns = tidyselect::any_of("cohens_d"), decimals = 2) |>
     gt::fmt_integer(columns = tidyselect::any_of(c("n1", "n2", "df"))) |>
     gt::fmt(columns = tidyselect::any_of(c("p", "p.adj")), fns = .apa_p) |>
     gt::sub_missing(missing_text = "---") |>
