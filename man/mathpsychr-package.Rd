@@ -4,9 +4,17 @@
 \name{mathpsychr-package}
 \alias{mathpsychr}
 \alias{mathpsychr-package}
-\title{mathpsychr: Provides Infrastructure for Mathematical Psychology Modelling}
+\title{mathpsychr: Infrastructure for Mathematical Psychology Modelling}
 \description{
 Infrastructure for specifying, simulating, and evaluating generative models used in mathematical psychology and cognitive experiments.
+}
+\seealso{
+Useful links:
+\itemize{
+  \item \url{https://github.com/josefmana/mathpsychr}
+  \item Report bugs at \url{https://github.com/josefmana/mathpsychr/issues}
+}
+
 }
 \author{
 \strong{Maintainer}: Josef Mana \email{mana@psu.cas.cz} (\href{https://orcid.org/0000-0002-7817-3978}{ORCID})

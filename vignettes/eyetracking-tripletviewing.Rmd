@@ -42,7 +42,7 @@ usethis::edit_r_environ()
 
 With the PAT in place, download the `asc` and `responses` folders from the **Triplet Viewing** project into a temporary directory:
 
-```{r data-download, cache=TRUE}
+```{r data-download, cache=FALSE}
 temp_path <- file.path(tempdir(), "my_osfr_downloads")
 dir.create(temp_path)
 
@@ -71,7 +71,7 @@ devtools::install_github("jirilukavsky/tripletviewing", upgrade = "never")
 
 The data were collected on an EyeLink system, with the task built in Experiment Builder. Each recording was saved as ASC file (eye-tracking) in `/asc` directory and a matching TXT file (responses) in `/responses` directory. `mathpsychr::import_eyelink_data()` is built for exactly this data arrangement.
 
-```{r data-import, cache=TRUE}
+```{r data-import, cache=FALSE}
 # `Here, we use two folders, one for eye-tracking and one for response data. Note, however,
 # that `import_eyelink_data()` pairs an ASC file with its TXT file by matching filename (e.g.
 # "rec1.asc" with "rec1.txt"), even if both live in the same folder.
@@ -226,7 +226,7 @@ Compare the raw response data (all imported columns, preceded by `dataset_id` an
 raw_data$response_data
 ```
 
-...to the pre-processed version. Note the added `agreement_rate`, `difficulty_bin`, and `response_maj` columns (derived from triplet-wise agreement rate) and the new `chosen_aoi` column (which will come handy in later processing), alongside fewer rows:
+...to the pre-processed version. Note the added `agreement_rate`, `agreement_bin`, and `response_maj` columns (derived from triplet-wise agreement rate) and the new `chosen_aoi` column (which will come handy in later processing), alongside fewer rows:
 
 ```{r triplet-response-preprocessed}
 response_data
@@ -365,18 +365,18 @@ eyelink_data$responses <- dplyr::mutate(
 )
 ```
 
-For the grouped analysis, we stratify by `difficulty_bin`, which splits triplets into three agreement-rate tiers:
+For the grouped analysis, we stratify by `agreement_bin`, which splits triplets into three agreement-rate tiers:
 
-* **Low** (50-65%] agreement, *N~Low~* = `r eyelink_data$responses |> dplyr::filter(difficulty_bin == "Low (50-65%]") |> dplyr::distinct(tid) |> nrow()`
-* **Medium** (65-85%] agreement, *N~Medium~* = `r eyelink_data$responses |> dplyr::filter(difficulty_bin == "Medium (65-85%]") |> dplyr::distinct(tid) |> nrow()`
-* **High** (85-100%] agreement, *N~High~* = `r eyelink_data$responses |> dplyr::filter(difficulty_bin == "High (85-100%]") |> dplyr::distinct(tid) |> nrow()`
+* **Low** (50-65%] agreement, *N~Low~* = `r eyelink_data$responses |> dplyr::filter(agreement_bin == "50-65% (Low)") |> dplyr::distinct(tid) |> nrow()`
+* **Medium** (65-85%] agreement, *N~Medium~* = `r eyelink_data$responses |> dplyr::filter(agreement_bin == "65-85% (Medium)") |> dplyr::distinct(tid) |> nrow()`
+* **High** (85-100%] agreement, *N~High~* = `r eyelink_data$responses |> dplyr::filter(agreement_bin == "85-100% (High)") |> dplyr::distinct(tid) |> nrow()`
 
-```{r cascade-processing-grouped, cache=TRUE}
+```{r cascade-processing-grouped, cache=FALSE}
 gc_grouped_data <- process(
   eyelink_data,
   type = "cascade",
   trial_vars = c("block", "trial"),
-  grp_vars = "difficulty_bin",     # NEW grouping variable
+  grp_vars = "agreement_bin",     # NEW grouping variable
   window = 3.5,
   n_bins = 105L,
   response_time_col = "response_time",
@@ -384,7 +384,7 @@ gc_grouped_data <- process(
 )
 ```
 
-`gc_grouped_data` has more rows than `gc_data` and an extra `difficulty_bin` column, which is also stored as a grouping variable for downstream use:
+`gc_grouped_data` has more rows than `gc_data` and an extra `agreement_bin` column, which is also stored as a grouping variable for downstream use:
 
 ```{r cascade-data-grouped}
 print(gc_grouped_data, n = 13L)
@@ -424,7 +424,7 @@ Visually, the curves look similar across difficulty bins, with the inflection po
 
 ### Fitting
 
-```{r cascade-bootstrap, cache=TRUE}
+```{r cascade-bootstrap, cache=FALSE}
 gc_bootstrap <- compute(
   gc_grouped_data,
   fit_type = c("sigmoid", "piecewise"),
@@ -519,12 +519,12 @@ eyelink_data$fixations$dur <- eyelink_data$fixations$dur / 1000
 
 Computing the measures uses the same `process()` function as the gaze cascade, only with `type = "measures"`:
 
-```{r measures-processing, cache=TRUE}
+```{r measures-processing, cache=FALSE}
 em_data <- process(
   eyelink_data,
   type = "measures",                   # CHANGE: "measures" instead of "cascade"
   trial_vars = c("block", "trial"),
-  grp_vars = "difficulty_bin",         # measures are computed per trial; `grp_vars` tags along for later
+  grp_vars = "agreement_bin",         # measures are computed per trial; `grp_vars` tags along for later
   stats = NULL,                        # NULL or "all" computes every available measure
   window = Inf,                        # Inf computes measures across the full trial
   query_aoi = "query",                 # query and reference AOIs are required for the
@@ -563,7 +563,7 @@ The `compute()` that bootstrapped the cascade fits also summarises and compares 
   * `length(grp_vars) == 1` compares `grp_vars[1]` via one-way ANOVA,
   * `length(grp_vars) >= 2` compares `grp_vars[1]`, `grp_vars[2]`, and their interaction via two-way ANOVA.
 
-```{r measures-computation, cache=TRUE}
+```{r measures-computation, cache=FALSE}
 em_comparisons <- compute(
   em_data,
   by_group = TRUE, # FALSE suppresses `grp_vars` stratification
@@ -574,7 +574,7 @@ em_comparisons <- compute(
 )
 ```
 
-As with `compute.mpr_gaze_cascade()`, the messages carry caveats worth reading. Most consequentially, `{mathpsychr}` *infers* within- vs. between-subject structure from the data rather than being told. Here both `aoi` and `difficulty_bin` were treated as within-subject, which decides whether paired or unpaired tests were run. Always check that against your actual design. Note too that the *p*-value adjustments apply within each measure's post-hoc family, not across the omnibus tests, so the omnibus column should be read as unadjusted.
+As with `compute.mpr_gaze_cascade()`, the messages carry caveats worth reading. Most consequentially, `{mathpsychr}` *infers* within- vs. between-subject structure from the data rather than being told. Here both `aoi` and `agreement_bin` were treated as within-subject, which decides whether paired or unpaired tests were run. Always check that against your actual design. Note too that the *p*-value adjustments apply within each measure's post-hoc family, not across the omnibus tests, so the omnibus column should be read as unadjusted.
 
 Before examining statistical comparison results, it is worth noting, that the `mpr_gaze_measures_comparisons` object comes with recording (participant)-level average data, that are used as inputs to the aforementioned ANOVAs and can be further examined by the user:
 
@@ -595,7 +595,7 @@ Recall that an **AOI-scope measure** is computed separately for each AOI, includ
 as_gt(em_comparisons, type = "test", scope = "aoi")
 ```
 
-**How much are the images inspected.** A potentially revealing pattern can be observed by contrasting *total* and *mean dwell times*. Whereas the analysis detected clear triplet difficulty-dependent differences in total dwell times across AOIs, the same was not true for the mean dwell time. In the latter case, only the high-agreement triplets differed significantly from the rest, mainly for the query and non-chosen images. Notably, *fixation count* mirrors the pattern of results observed for *total dwell time*. The two measures also correlate tightly, while only small correlation was observed between *fixation count* and *mean dwell time*. Taken together, this pattern is consisent with a reading that it is total effort spent gathering evidence, rather than how that effort is split across AOIs, that reflects decision difficulty in the task. To evaluate this conjecture more comprehensively, we examine the stimulus-scope and categorical measures next.
+**How much are the images inspected.** A potentially revealing pattern can be observed by contrasting *total* and *mean dwell times*. Whereas the analysis detected clear triplet difficulty-dependent differences in total dwell times across AOIs, the same was not true for the mean dwell time. In the latter case, only the high-agreement triplets differed significantly from the rest, mainly for the query and non-chosen images. Notably, *fixation count* mirrors the pattern of results observed for *total dwell time*. The two measures also correlate tightly, while only small correlation was observed between *fixation count* and *mean dwell time*. Taken together, this pattern is consistent with a reading that it is total effort spent gathering evidence, rather than how that effort is split across AOIs, that reflects decision difficulty in the task. To evaluate this conjecture more comprehensively, we examine the stimulus-scope and categorical measures next.
 
 ```{r measures-aoi-pairwise-tabs}
 aoi_stats <- c(
@@ -620,7 +620,7 @@ plot(em_comparisons, type = "scatter", stats = aoi_stats[c(1L, 3L)])
 plot(em_comparisons, type = "scatter", stats = aoi_stats[c(2L, 3L)])
 ```
 
-### Stimilus-scope measures
+### Stimulus-scope measures
 
 A **stimulus-scope** measure receives a single, AOI-invariant score per trial. These include the number of *switches*, total *watch time*, *first* and *last reference fixation times*, and *transition* counts between AOIs (query↔references, and reference↔reference). Each transition measure comes in a *direct* flavour (AOI-to-AOI with no intervening fixation) and a *total* flavour (counting AOI-to-blank-to-AOI paths too). We use the total versions here, since direct counts can be confounded by saccade accuracy.
 
@@ -641,13 +641,11 @@ stim_stats <- c(
 as_gt(em_comparisons, type = "test", stats = stim_stats)
 ```
 
-The only stimulus-scope measure without a detectable difficulty effect is *first reference fixation time*. To avoid visual clutter, we show the descriptives, then contrast this measure measure against the total switch/transition counts in more detail.
+The only stimulus-scope measure without a detectable difficulty effect is *first reference fixation time*. To avoid visual clutter, we show the descriptives, then contrast this measure against the total switch/transition counts in more detail.
 
 ```{r measures-stimulus-descriptive-tab}
 as_gt(em_comparisons, type = "desc", stats = stim_stats)
 ```
-
-**How much scanning happens at all.** *First reference fixation time* — when the first reference was fixated, regardless of which one — is the only stimulus-scope measure independent of total time on task, and the only one flat across difficulty, holding at 480–500 ms. Every other measure moves: total switches drop from ~8 to ~6.6 across the low-to-high bins, significantly so. The correlation structure echoes the AOI-scope story exactly — the effort-*allocation* proxy (first reference fixation time) barely correlates with the time-on-task proxy (watch time), while the total-*effort* proxies (switches, transitions) correlate almost perfectly with it. So again: total evidence-accumulation effort tracks difficulty, its allocation does not. But stimulus-scope measures cannot speak to allocation at all, since they ignore fixation location. That final piece comes from the categorical measures.
 
 **How much scanning happens at all.** *First reference fixation time*, i.e., when the first reference was fixated, regardless of which one it was, is the only stimulus-scope measure independent of total time on task, and the only one without a detectable change across triplet difficulty, remaining between 480–500 ms.^[Note that this is another case in which `{mathpsychr}`'s exploratory statistical machinery tells only a part of the story. It sounds reasonable and indeed desirable to combine this data with information about **which** AOI was the first reference fixated into a single model. The user can do so straightforwardly by pulling the trial-wise average data from `em_comparisons` via `as.data.frame(em_comparisons)`.] In comparison, total *switches* drop from  ~8 to ~6.6 across the low-to-high-agreement bins, statistically significantly so. The correlation structure also echoes the AOI-scope results, with the effort-*allocation* proxy (first reference fixation time) barely correlating with the time-on-task proxy (watch time), while the total-*effort* proxies (switches, transitions) correlate almost perfectly with it. These results reinforce the idea that total evidence-accumulation effort tracks difficulty better than its allocation does. However, stimulus-scope measures cannot speak to allocation at all, since they ignore fixation location. That final piece comes from the categorical measures.
 
@@ -708,7 +706,7 @@ To strip out the pre-response cascade, we can shrink the measurement window. Wit
 summary(em_data$responses$response_time)
 ```
 
-```{r measures-processing-short, cache=TRUE}
+```{r measures-processing-short, cache=FALSE}
 stats_1 <- c(
   "first_fixated_reference",
   "dwell_time_mean",
@@ -720,7 +718,7 @@ em_data_1 <- process(
   eyelink_data,
   type = "measures",
   trial_vars = c("block", "trial"),
-  grp_vars = "difficulty_bin",
+  grp_vars = "agreement_bin",
   stats = stats_1,
   window = 1,
   query_aoi = "query",
@@ -734,7 +732,7 @@ em_data_1
 
 Note that in the new `em_data_1$derivatives`, each computed measure comes with the window suffix (`*_1`), helping it to be joined with full trial or other window data if desired. Here, we simply push the data as is through the `compute()` pipeline and present the results:
 
-```{r measures-computation-short, cache=TRUE}
+```{r measures-computation-short, cache=FALSE}
 em_comparisons_1 <- compute(
   em_data_1,
   by_group = TRUE,
@@ -747,7 +745,7 @@ em_comparisons_1 <- compute(
 
 ```{r measures-short-tabs}
 # Within R terminal, all computed statistics with `type = "test"`
-# can be collectively printed via `print(em_comparisons_2)`
+# can be collectively printed via `print(em_comparisons_1)`
 as_gt(em_comparisons_1, scope = "cat")
 as_gt(em_comparisons_1) # By default, the function prints `scope = "aoi"`
 ```

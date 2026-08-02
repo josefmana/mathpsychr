@@ -1,6 +1,6 @@
 Package: mathpsychr
-Title: Provides Infrastructure for Mathematical Psychology Modelling
-Version: 0.0.0.9000
+Title: Infrastructure for Mathematical Psychology Modelling
+Version: 0.1.9001
 Authors@R: 
     person("Josef", "Mana", , "mana@psu.cas.cz", role = c("aut", "cre"),
            comment = c(ORCID = "0000-0002-7817-3978"))
@@ -8,6 +8,10 @@ Description: Infrastructure for specifying, simulating, and evaluating
     generative models used in mathematical psychology and cognitive
     experiments.
 License: MIT + file LICENSE
+URL: https://github.com/josefmana/mathpsychr
+BugReports: https://github.com/josefmana/mathpsychr/issues
+Depends:
+    R (>= 4.1)
 Imports: 
     boot,
     cli,
@@ -19,6 +23,7 @@ Imports:
     glue,
     grid,
     gt,
+    patchwork,
     purrr,
     readr,
     rlang,
@@ -33,13 +38,10 @@ Suggests:
     gridExtra,
     knitr,
     osfr,
-    patchwork,
     pwrss,
     retrodesign,
     rmarkdown,
     testthat (>= 3.0.0),
-    tidyverse,
-    tripletviewing,
     withr
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
