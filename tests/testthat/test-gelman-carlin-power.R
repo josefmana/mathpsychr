@@ -118,13 +118,13 @@ test_that("`compute()` on base `mpr_power` (no subclass) raises an informative e
 # ══════════════════════════════════════════════════════════════════════════════
 
 test_that("`compute()` returns the object with results populated (scalar)", {
-  d <- gelman_carlin_power(effect_size = 2, se = 8.1) |> compute()
+  d <- gelman_carlin_power(effect_size = 2, se = 8.1) |> .compute_mpr_gelman_carlin_power()
   expect_false(is.null(d$results))
   expect_s3_class(d$results, "data.frame")
 })
 
 test_that("`compute()` results have the required columns", {
-  d <- gelman_carlin_power(effect_size = 2, se = 8.1) |> compute()
+  d <- gelman_carlin_power(effect_size = 2, se = 8.1) |> .compute_mpr_gelman_carlin_power()
   expect_named(
     d$results,
     c("effect_size", "se", "power", "type_s", "type_m"),
@@ -134,50 +134,50 @@ test_that("`compute()` results have the required columns", {
 
 test_that("`compute()` vectorised effect_size produces correct row count", {
   D_range <- c(seq(0.01, 1, 0.01), seq(1.01, 10, 0.1))
-  d <- gelman_carlin_power(effect_size = D_range, se = 1) |> compute()
+  d <- gelman_carlin_power(effect_size = D_range, se = 1) |> .compute_mpr_gelman_carlin_power()
   expect_equal(nrow(d$results), length(D_range))
 })
 
 test_that("`compute()` scalar se is recycled correctly over a vector of effects", {
-  d <- gelman_carlin_power(effect_size = c(1, 2, 3), se = 1) |> compute()
+  d <- gelman_carlin_power(effect_size = c(1, 2, 3), se = 1) |> .compute_mpr_gelman_carlin_power()
   expect_equal(d$results$se, c(1, 1, 1))
 })
 
 test_that("`compute()` power is a probability in [0, 1] for all effect sizes", {
   D_range <- c(seq(0.01, 1, 0.1), seq(1, 10, 1))
-  d <- gelman_carlin_power(effect_size = D_range, se = 1) |> compute()
+  d <- gelman_carlin_power(effect_size = D_range, se = 1) |> .compute_mpr_gelman_carlin_power()
   expect_true(all(d$results$power >= 0 & d$results$power <= 1))
 })
 
 test_that("`compute()` type_s is a probability in [0, 0.5] for positive effects", {
   D_range <- seq(0.1, 10, 0.1)
-  d <- gelman_carlin_power(effect_size = D_range, se = 1) |> compute()
+  d <- gelman_carlin_power(effect_size = D_range, se = 1) |> .compute_mpr_gelman_carlin_power()
   non_na <- d$results$type_s[!is.na(d$results$type_s)]
   expect_true(all(non_na >= 0 & non_na <= 0.5))
 })
 
 test_that("`compute()` type_m >= 1 for all finite positive effects", {
   D_range <- seq(0.1, 10, 0.1)
-  d <- gelman_carlin_power(effect_size = D_range, se = 1) |> compute()
+  d <- gelman_carlin_power(effect_size = D_range, se = 1) |> .compute_mpr_gelman_carlin_power()
   non_na <- d$results$type_m[!is.na(d$results$type_m)]
   expect_true(all(non_na >= 1 - TOL_EXACT))
 })
 
 test_that("`compute()` power increases monotonically with `abs(effect_size / se)`", {
   D_range <- seq(0.5, 10, 0.5)
-  d <- gelman_carlin_power(effect_size = D_range, se = 1) |> compute()
+  d <- gelman_carlin_power(effect_size = D_range, se = 1) |> .compute_mpr_gelman_carlin_power()
   expect_true(all(diff(d$results$power) > 0))
 })
 
 test_that("`compute()` type_m decreases monotonically as power increases", {
   D_range <- seq(0.5, 10, 0.5)
-  d <- gelman_carlin_power(effect_size = D_range, se = 1) |> compute()
+  d <- gelman_carlin_power(effect_size = D_range, se = 1) |> .compute_mpr_gelman_carlin_power()
   finite_m <- d$results$type_m[is.finite(d$results$type_m)]
   expect_true(all(diff(finite_m) < 0))
 })
 
 test_that("`compute()` high-power design correctly", {
-  d <- gelman_carlin_power(effect_size = 10, se = 1) |> compute()
+  d <- gelman_carlin_power(effect_size = 10, se = 1) |> .compute_mpr_gelman_carlin_power()
   r <- d$results[1L, ]
   expect_equal(r$power,  1.0, tolerance = 1e-9)
   expect_equal(r$type_s, 0.0, tolerance = 1e-9)
@@ -186,19 +186,19 @@ test_that("`compute()` high-power design correctly", {
 
 test_that("`compute()` simulation runs without error for finite df", {
   expect_no_error(
-    gelman_carlin_power(effect_size = 2, se = 8.1, df = 30, n_sims = 500L) |> compute()
+    gelman_carlin_power(effect_size = 2, se = 8.1, df = 30, n_sims = 500L) |> .compute_mpr_gelman_carlin_power()
   )
 })
 
 test_that("`compute()` simulation (df = 30) type_s in [0, 0.5]", {
   d_sim <- gelman_carlin_power(effect_size = 2, se = 8.1, df = 30, n_sims = 2000L) |>
-    compute()
+    .compute_mpr_gelman_carlin_power()
   ts <- d_sim$results$type_s
   expect_true(is.na(ts) || (ts >= 0 && ts <= 0.5))
 })
 
 test_that("`compute()` simulation n_sims controls draw count", {
-  d <- gelman_carlin_power(effect_size = 2, se = 8.1, df = 10, n_sims = 100L) |> compute()
+  d <- gelman_carlin_power(effect_size = 2, se = 8.1, df = 10, n_sims = 100L) |> .compute_mpr_gelman_carlin_power()
   expect_false(is.null(d$results))
   expect_equal(nrow(d$results), 1L)
 })
@@ -221,7 +221,7 @@ test_that("`compute()` matches Gelman & Carlin's original formula (gc1)", {
   type_m_orig <- mean(abs(est)[sig]) / A
 
   d <- gelman_carlin_power(effect_size = A, se = s) |>
-    compute()
+    .compute_mpr_gelman_carlin_power()
 
   expect_equal(d$results$power, power_orig,   tolerance = TOL_EXACT)
   expect_equal(d$results$type_s, type_s_orig, tolerance = TOL_EXACT)
@@ -240,7 +240,7 @@ test_that("`compute()` matches Gelman & Carlin's original formula (gc2)", {
   type_m_orig <- mean(abs(est)[sig]) / A
 
   d <- gelman_carlin_power(effect_size = A, se = s) |>
-    compute()
+    .compute_mpr_gelman_carlin_power()
 
   expect_equal(d$results$power, power_orig,   tolerance = TOL_EXACT)
   expect_equal(d$results$type_s, type_s_orig, tolerance = TOL_EXACT)
@@ -261,7 +261,7 @@ test_that("`compute()` matches `retrodesign::retro_design_closed_form()` (gc1)",
   )
 
   d <- gelman_carlin_power(effect_size = REF$gc1$A, se = REF$gc1$s) |>
-    compute()
+    .compute_mpr_gelman_carlin_power()
 
   expect_equal(d$results$power,  rd$power,  tolerance = TOL_EXACT)
   expect_equal(d$results$type_s, rd$type_s, tolerance = TOL_EXACT)
@@ -277,7 +277,7 @@ test_that("`compute()` matches `retrodesign::retro_design_closed_form()` (gc2)",
   )
 
   d <- gelman_carlin_power(effect_size = REF$gc2$A, se = REF$gc2$s) |>
-    compute()
+    .compute_mpr_gelman_carlin_power()
 
   expect_equal(d$results$power,  rd$power,  tolerance = TOL_EXACT)
   expect_equal(d$results$type_s, rd$type_s, tolerance = TOL_EXACT)
@@ -291,7 +291,7 @@ test_that("`compute()` matches `retrodesign::retro_design_closed_form()` at lamb
 
   rd <- retrodesign::retro_design_closed_form(A = A, s = s, alpha = 0.05)
   d  <- gelman_carlin_power(effect_size = A, se = s) |>
-    compute()
+    .compute_mpr_gelman_carlin_power()
 
   expect_equal(d$results$power,  rd$power,  tolerance = TOL_EXACT)
   expect_equal(d$results$type_s, rd$type_s, tolerance = TOL_EXACT)
@@ -312,7 +312,7 @@ test_that("`compute()` vectorised sweep matches `retrodesign::retrodesign()` pow
 
   d_vec <-
     gelman_carlin_power(effect_size = lambdas, se = 1) |>
-    compute()
+    .compute_mpr_gelman_carlin_power()
 
   expect_equal(d_vec$results$power,  rd_power,  tolerance = TOL_EXACT)
   expect_equal(d_vec$results$type_s, rd_type_s, tolerance = TOL_EXACT)
@@ -357,7 +357,7 @@ test_that("`compute()` power matches `pwrss::power.t.test()` (normal approx.)", 
         df          = if (df > 1e5) Inf else df,
         n_sims      = 1e5L
       ) |>
-        compute() |>
+        .compute_mpr_gelman_carlin_power() |>
         (\(x) x$results$power)()
     },
     A  = params$A,

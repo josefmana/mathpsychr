@@ -85,7 +85,7 @@
 #'   `effect_size`, `se`, `power`, `type_s`, `type_m`.
 #'
 #' @noRd
-compute.mpr_gelman_carlin_power <- function(x, ...) {
+.compute_mpr_gelman_carlin_power <- function(x, ...) {
   A <- x$effect_size
   s <- if (length(x$se) == 1L) rep(x$se, length(A)) else x$se
   alpha <- x$alpha
