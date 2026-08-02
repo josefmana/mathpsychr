@@ -2,10 +2,12 @@
 ^\.Rproj\.user$
 ^\.github$
 ^LICENSE\.md$
+^CITATION\.cff$
 ^outcomes$
 ^docs$
 ^\.positai$
 ^\.claude$
 cache/
 ^data-raw$
-
+^vignettes/eyetracking-tripletviewing\.Rmd$
+^vignettes/eyetracking-tripletviewing\.html$
