@@ -10,7 +10,7 @@
 #'
 #' @family power
 #'
-#' @export
+#' @noRd
 print.mpr_power <- function(x, digits = 3L, ...) {
   cat(sprintf(
     "<mpr_power>\n  subclass: %s\n", class(x)[1L]
@@ -51,7 +51,7 @@ print.mpr_power <- function(x, digits = 3L, ...) {
 #'
 #' @family power
 #'
-#' @export
+#' @noRd
 format.mpr_power <- function(x, ...) {
   sprintf(
     "<mpr_power>: %s, n_effects = %d>",
@@ -72,7 +72,7 @@ format.mpr_power <- function(x, ...) {
 #'
 #' @family power
 #'
-#' @export
+#' @noRd
 summary.mpr_power <- function(object, digits = 3L, ...) {
   cat(sprintf(
     " mathpsychr power analysis: %s \n   alpha = %s  |  df = %s\n\n",
@@ -119,7 +119,7 @@ summary.mpr_power <- function(object, digits = 3L, ...) {
 #' @returns A `data.frame`, or `NULL` (with a warning) if results have not
 #'   been computed yet.
 #'
-#' @export
+#' @noRd
 as.data.frame.mpr_power <- function(x, ...) {
   if (is.null(x$results)) {
     cli::cli_alert_warning("No results available; returning NULL.")
@@ -138,7 +138,7 @@ as.data.frame.mpr_power <- function(x, ...) {
 #'
 #' @returns A tibble, or an error if \pkg{tibble} is not installed.
 #'
-#' @exportS3Method tibble::as_tibble
+#' @noRd
 as_tibble.mpr_power <- function(x, ...) {
   if (!requireNamespace("tibble", quietly = TRUE))
     cli::cli_abort("Package 'tibble' needed for as_tibble(). Install it first.")

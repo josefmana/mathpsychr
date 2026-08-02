@@ -84,7 +84,7 @@
 #' @returns `x` with `$results` populated as a `data.frame` with columns
 #'   `effect_size`, `se`, `power`, `type_s`, `type_m`.
 #'
-#' @export
+#' @noRd
 compute.mpr_gelman_carlin_power <- function(x, ...) {
   A <- x$effect_size
   s <- if (length(x$se) == 1L) rep(x$se, length(A)) else x$se

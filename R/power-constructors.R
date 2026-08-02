@@ -128,7 +128,7 @@ mpr_gelman_carlin_power <- function(
 #' d_fig   <- compute(d_fig)
 #' plot(d_fig)
 #'
-#' @export
+#' @noRd
 gelman_carlin_power <- function(
     effect_size,
     se,

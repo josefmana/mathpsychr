@@ -22,7 +22,7 @@
 #'
 #' @seealso [dag_equations()], [mpr_dag()].
 #'
-#' @export
+#' @noRd
 dag_nodes <- function(
     name,
     label = name,
@@ -72,7 +72,7 @@ dag_nodes <- function(
 #'
 #' @seealso [dag_nodes()], [mpr_dag()].
 #'
-#' @export
+#' @noRd
 dag_equations <- function(y, X) {
   df <- tibble::tibble(
     y = as.character(y),
@@ -101,7 +101,7 @@ dag_equations <- function(y, X) {
 #'
 #' @seealso [dag_nodes()], [mpr_dag()].
 #'
-#' @export
+#' @noRd
 dag_edges <- function(from, to, arc = 0) {
   df <- tibble::tibble(
     from = as.character(from),
@@ -133,7 +133,7 @@ dag_edges <- function(from, to, arc = 0) {
 #' and transforming them via [as_dagitty.mpr_dag()] for
 #' further operations within \{dagitty\}.
 #'
-#' @export
+#' @noRd
 mpr_dag <- function(nodes, equations) {
   if (!inherits(nodes, "mpr_dag_nodes")) {
     cli::cli_abort("{.var nodes} must be created with dag_nodes().")
@@ -170,7 +170,7 @@ mpr_dag <- function(nodes, equations) {
 #'
 #' @returns A list of class "mpr_dag_scales".
 #'
-#' @export
+#' @noRd
 dag_scales <- function(
     nodes = 10,
     labels = 5.33,

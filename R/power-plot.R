@@ -230,7 +230,7 @@
 #'
 #' @returns A ggplot object or a two-panel layout.
 #'
-#' @export
+#' @noRd
 plot.mpr_power <- function(
     x,
     type = c("both", "type_s", "type_m"),

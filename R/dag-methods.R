@@ -8,7 +8,7 @@
 #'
 #' @returns A list containing model's equations.
 #'
-#' @export
+#' @noRd
 as_formula.mpr_dag <- function(x, ...) {
   purrr::map2(
     x$equations$y,
@@ -31,7 +31,7 @@ as_formula.mpr_dag <- function(x, ...) {
 #'
 #' @returns A `daggity` object created via `ggdag::daggity()`.
 #'
-#' @export
+#' @noRd
 as_dagitty.mpr_dag <- function(x, ...) {
   specs <- as_formula(x)
   specs$coords <- x$nodes |>
@@ -78,7 +78,7 @@ as_dagitty.mpr_dag <- function(x, ...) {
 #'
 #' @returns \{ggplot2\} rendering of the DAG.
 #'
-#' @export
+#' @noRd
 plot.mpr_dag <- function(x, arcs = NULL, size = NULL, ...) {
 
   if (!(is.null(arcs) || inherits(arcs, "mpr_dag_edges"))) {
