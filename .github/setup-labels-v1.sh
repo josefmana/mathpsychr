@@ -53,7 +53,7 @@ lbl "status: needs-vignette" "f9d0c4" "Methodology warrants a long-form vignette
 
 # ── Priority labels ───────────────────────────────────────────────────────
 # The only priority axis that matters until November: does CATLAS block it?
-lbl "priority: catlas" "d93f0b" "On the CATLAS critical path (fb-allergy-online-01/02)"
+lbl "priority: catlas" "d93f0b" "On the CATLAS critical path (fba-allergy-online-01/02)"
 lbl "priority: parked" "ededed" "Desired, but nothing downstream is waiting on it"
 
 # ── Remove GitHub defaults ────────────────────────────────────────────────

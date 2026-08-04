@@ -10,13 +10,13 @@
 # issue was created will make the next run create a second copy.
 #
 # The dates are pegged to CATLAS, not to how long the work looks like it takes:
-#   v0.1.9002  DAGs must exist before the fb-allergy-online-01 pilot can have
+#   v0.1.9002  DAGs must exist before the fba-allergy-online-01 pilot can have
 #              an analysis plan.
 #   v0.1.9003  retrospective design analysis is applied *to* the pilot results,
 #              so it cannot precede them.
 #   v0.1.9004  prospective power is constrained by what the pilot turns out to
 #              need, which is why it is dated last and gated by a decision.
-#   v0.1.0     the fb-allergy-online-02 pre-registration is written against it.
+#   v0.1.0     the fba-allergy-online-02 pre-registration is written against it.
 # ---------------------------------------------------------------------------
 set -uo pipefail
 REPO="josefmana/mathpsychr"
@@ -54,9 +54,9 @@ ms "v0.1.9002: heuristic causal models" "2026-08-31T23:59:59Z" \
 - computation of implication tests against data
 - \`{gt}\` rendering fit to paste into a pre-registration
 
-built on the same four-verb philosophy as \`mpr_eyetracking\`, not on the pre-0.1.9001 design. Gates the fb-allergy-online-01 analysis plan.
+built on the same four-verb philosophy as \`mpr_eyetracking\`, not on the pre-0.1.9001 design. Gates the fba-allergy-online-01 analysis plan.
 
-Note on where the risk sits. The substantive causal argument for fb-allergy-online-01 is re-used from the literature, but the literature makes it **in prose**: the source work runs experiments and reasons about causal implications informally, without an identification framework. This milestone is therefore a formalisation, not a transcription, and it carries both risks at once. The translation from argument to graph is a modelling act with real discretion and the resulting graph then has to survive declaration, storage, export and plotting without being silently distorted.
+Note on where the risk sits. The substantive causal argument for fba-allergy-online-01 is re-used from the literature, but the literature makes it **in prose**: the source work runs experiments and reasons about causal implications informally, without an identification framework. This milestone is therefore a formalisation, not a transcription, and it carries both risks at once. The translation from argument to graph is a modelling act with real discretion and the resulting graph then has to survive declaration, storage, export and plotting without being silently distorted.
 
 Doing the formal part is one of the things {mathpsychr} and CATLAS exist to add. The graph should accordingly be treated as a contestable claim of ours, not as a neutral rendering of the previous literature causal claims."
 
@@ -68,7 +68,7 @@ ms "v0.1.9003: retrospective design analysis" "2026-09-18T23:59:59Z" \
 - \`{gt}\` rendering and a plot that makes the sweep readable
 - the standing exploratory-use caveat
 
-Applied to the fb-allergy-online-01 pilot estimates, so it follows v0.1.9002 rather than running beside it."
+Applied to the fba-allergy-online-01 pilot estimates, so it follows v0.1.9002 rather than running beside it."
 
 ms "v0.1.9004: prospective design analysis" "2026-10-09T23:59:59Z" \
 "**Must contain** either a prospective design-analysis component, or a written decision that {mathpsychr} will not carry one and that {catlasr} calls {pwrss} directly.
@@ -76,7 +76,7 @@ ms "v0.1.9004: prospective design analysis" "2026-10-09T23:59:59Z" \
 Deliberately gated: what this needs is dictated by what the pilot analysis turns out to require, which is not knowable until v0.1.9003 has been used in anger. Closing this milestone empty, with the reasoning recorded in NEWS, is a legitimate outcome."
 
 ms "v0.1.0: first stable release" "2026-10-30T23:59:59Z" \
-"**Must contain** a package whose API can be depended on by the fb-allergy-online-02 pre-registration:
+"**Must contain** a package whose API can be depended on by the fba-allergy-online-02 pre-registration:
 
 - causal and design subsystems exported, documented, tested
 - eye-tracking subsystem under test rather than under vignette
@@ -136,7 +136,7 @@ mk "$M" "scope: causal,type: feature,status: needs-code,priority: catlas" \
   "Add exposure, outcome, latent and adjusted roles to DAG nodes" \
   "Absorbs the second box of #5.
 
-CATLAS derives the fb-allergy-online-01 analysis plan *from* the DAG, so the DAG has to be able to say which node is the exposure and which is the outcome. \`dag_nodes()\` has no slot for it, and \`as_dagitty()\` drops everything but coordinates on the way out.
+CATLAS derives the fba-allergy-online-01 analysis plan *from* the DAG, so the DAG has to be able to say which node is the exposure and which is the outcome. \`dag_nodes()\` has no slot for it, and \`as_dagitty()\` drops everything but coordinates on the way out.
 
 Exposure and outcome fall straight out of the experimental design and are not in dispute. Latent nodes are a different matter. Since the source literature posits nothing formally, every latent we declare is **our** claim and the object has to make that visible rather than let it pass as inherited. A node the design forces and a node we posited should not look identical on a plot.
 
@@ -201,7 +201,7 @@ The graph is small enough to inline as literal \`dag_nodes()\` / \`dag_edges()\`
 
 Framing matters more than usual here. This is **not** \"how to redraw a published DAG,\" because the source literature has no DAG, it has an argument in prose. The vignette's real subject is the translation step, which is the capability {mathpsychr} exists to add and the step a reader will most want to see done carefully. Structure it accordingly: the prose claim, the edge it becomes, the discretion exercised in between, and what the formalism can then say that the prose could not.
 
-Walks the four verbs on the fb-allergy-online-01 graph: declare, \`process()\` into adjustment sets, \`compute()\` the implication tests, \`as_gt()\` the pre-registration table. Doubles as this milestone's acceptance test and as the figure source for the CATLAS text, so the figures should be publication-shaped from the first draft rather than retrofitted later."
+Walks the four verbs on the fba-allergy-online-01 graph: declare, \`process()\` into adjustment sets, \`compute()\` the implication tests, \`as_gt()\` the pre-registration table. Doubles as this milestone's acceptance test and as the figure source for the CATLAS text, so the figures should be publication-shaped from the first draft rather than retrofitted later."
 
 mk "$M" "scope: causal,status: needs-tests" \
   "Unit tests for the causal subsystem" \
@@ -261,7 +261,7 @@ Third one matters most: it is the easiest thing in the world to pass \`effect_si
 
 mk "$M" "scope: design,type: feature,status: needs-code,priority: catlas" \
   "\`as_gt()\` for design-analysis results" \
-  "Same verb as the eye-tracking tables, same destination as the causal ones: straight into the CATLAS pilot report and the fb-allergy-online-02 pre-registration.
+  "Same verb as the eye-tracking tables, same destination as the causal ones: straight into the CATLAS pilot report and the fba-allergy-online-02 pre-registration.
 
 Columns: assumed effect, standard error, power, Type S, exaggeration factor. Exaggeration wants a multiplier format (\`2.4x\`) rather than a bare number, which \`summary.mpr_power()\` already prints, that way and the table should not disagree with the console."
 
@@ -269,7 +269,7 @@ mk "$M" "scope: design,type: docs,status: needs-vignette,priority: catlas" \
   "Vignette: design analysis" \
   "Public dependencies only, same rule as the causal vignette.
 
-Reproduce Gelman & Carlin's Figure 2 (the sweep example already sitting in the constructor's roxygen), then run the same analysis on the fb-allergy-online-01 pilot estimates. The second half is what CATLAS cites; the first half is what motivates a reader trust the second."
+Reproduce Gelman & Carlin's Figure 2 (the sweep example already sitting in the constructor's roxygen), then run the same analysis on the fba-allergy-online-01 pilot estimates. The second half is what CATLAS cites; the first half is what motivates a reader trust the second."
 
 mk "$M" "scope: design,status: needs-tests,priority: catlas" \
   "Fill the reserved CATLAS slot in the design-analysis reference values" \
@@ -308,7 +308,7 @@ Hard requirement: the two must be **visibly** different at print time. A reader 
 
 mk "$M" "scope: design,type: feature,priority: catlas" \
   "Solve for *n* against a Type M target, not a power target" \
-  "The actual CATLAS deliverable is \"sufficient sample size for the fb-allergy-online-02\". Under the Gelman & Carlin framing, sufficiency is not 80% power, it is an acceptable exaggeration ratio at the effect sizes that are plausible for three-stage forward blocking.
+  "The actual CATLAS deliverable is \"sufficient sample size for the fba-allergy-online-02\". Under the Gelman & Carlin framing, sufficiency is not 80% power, it is an acceptable exaggeration ratio at the effect sizes that are plausible for three-stage forward blocking.
 
 Neither \`{pwrss}\` nor \`{retrodesign}\` does this. It is the single strongest argument for option (a) in the gate issue, and if it is not wanted, (a) is not wanted either.
 
@@ -327,7 +327,7 @@ M="v0.1.0: first stable release"
 
 mk "$M" "scope: infra,type: question" \
   "Decide what \"stable\" means for a 0.x package, and write it down" \
-  "The README currently says argument names, class names and method signatures may change without notice. On 2026-10-30 that stops being acceptable, because the fb-allergy-online-02 pre-registration will cite this package by name and version.
+  "The README currently says argument names, class names and method signatures may change without notice. On 2026-10-30 that stops being acceptable, because the fba-allergy-online-02 pre-registration will cite this package by name and version.
 
 Needs deciding: the lifecycle badge (\`experimental\` is on the README today), whether 0.x buys the right to break things between minor versions and what the deprecation path looks like when it does. The v0.1.9001 NEWS made \`mpr_dag\` and \`mpr_power\` defunct with no cycle at all; that was defensible for a pre-release and will not be after this one."
 
@@ -372,7 +372,7 @@ mk "$M" "scope: infra,type: chore" \
   "Tag v0.1.0, bump DESCRIPTION, cut the release" \
   "Version bump from \`0.1.9004\` to \`0.1.0\`, tag, GitHub release with the NEWS entry as the body.
 
-Do the tag last and do it only once the fb-allergy-online-02 pre-registration draft has actually been written against the package, not merely once the issues are closed. The pre-registration is this milestone's acceptance test and it is the only one that will find an API that is technically complete and practically unusable."
+Do the tag last and do it only once the fba-allergy-online-02 pre-registration draft has actually been written against the package, not merely once the issues are closed. The pre-registration is this milestone's acceptance test and it is the only one that will find an API that is technically complete and practically unusable."
 
 mk "$M" "scope: infra,type: question" \
   "Scope boundary: do hierarchical modelling wrappers belong here?" \
