@@ -1,8 +1,8 @@
 Package: mathpsychr
 Title: Infrastructure for Mathematical Psychology Modelling
-Version: 0.1.9001
+Version: 0.0.9001
 Authors@R: 
-    person("Josef", "Mana", , "mana@psu.cas.cz", role = c("aut", "cre"),
+    person("Josef", "Mana", , "josef.mana@psu.cas.cz", role = c("aut", "cre"),
            comment = c(ORCID = "0000-0002-7817-3978"))
 Description: Infrastructure for specifying, simulating, and evaluating
     generative models used in mathematical psychology and cognitive

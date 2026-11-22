@@ -8,7 +8,7 @@ Reusable infrastructure for generative modelling, simulation and model
 evaluation in mathematical psychology, independent of any specific theory or
 experimental paradigm.
 
-> **Pre-release (v0.1.9001).** This version ships the eye-tracking subsystem
+> **Pre-release (v0.0.9001).** This version ships the eye-tracking subsystem
 > only. The API is unstable and will change without deprecation cycles. See
 > [Status](#status) before depending on it.
 

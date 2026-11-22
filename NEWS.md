@@ -1,4 +1,4 @@
-# mathpsychr 0.1.9001
+# mathpsychr 0.0.9001
 
 First pre-release. Ships the EyeLink eye-tracking subsystem. Nothing in this
 version should be considered API-stable.
